@@ -5,13 +5,15 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: micro-users-tesis
+    env_file:
+      - .env
     ports:
       - '3000:3000'
     environment:
       JWT_SECRET: ${JWT_SECRET}
       HASH_SALT_ROUNDS: ${HASH_SALT_ROUNDS}
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
@@ -22,18 +24,18 @@ services:
       MAIL_FROM: ${MAIL_FROM}
       FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
-      - mysql
+      - mysql-api
 
-  mysql:
-    image: mysql:latest
-    container_name: mysql
+  mysql-api:
+    image: mysql:8.0
+    container_name: mysql-api
     ports:
       - '3307:3306'
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}                 # Nombre del usuario adicional
-      MYSQL_PASSWORD: ${DB_PASSWORD} 
+      MYSQL_ROOT_PASSWORD: zxkesV803rAsWKDHTLTB
+      MYSQL_DATABASE: users
+      MYSQL_USER: micro
+      MYSQL_PASSWORD: zxkesV803rAsWKDHTLTB
     volumes:
       - mysql-data:/var/lib/mysql
 
