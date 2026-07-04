@@ -17,6 +17,7 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
+      PORT: ${PORT}
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USER: ${MAIL_USER}
@@ -38,6 +39,18 @@ services:
       MYSQL_PASSWORD: zxkesV803rAsWKDHTLTB
     volumes:
       - mysql-data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin-api
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: mysql-api
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: zxkesV803rAsWKDHTLTB
+    depends_on:
+      - mysql-api
 
 volumes:
   mysql-data:

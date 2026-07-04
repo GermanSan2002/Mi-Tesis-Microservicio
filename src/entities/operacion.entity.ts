@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { Usuario } from './usuario.entity';
+import { TipoOperacion } from './tipo-operacion.enum';
 
 @Entity('operaciones')
 export class Operacion {
@@ -12,8 +13,8 @@ export class Operacion {
   @Column({ type: 'json', nullable: true })
   metadatos: any;
 
-  @Column()
-  tipo: string; // O enum si el "tipo" requiere valores fijos
+  @Column(({ type: 'enum', enum: TipoOperacion }))
+  tipo: string;
 
   @ManyToOne(() => Usuario, (usuario) => usuario.operaciones)
   usuario: Usuario;

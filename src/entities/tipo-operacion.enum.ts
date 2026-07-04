@@ -1,0 +1,16 @@
+export enum TipoOperacion {
+  CREAR_USUARIO = 'Crear_usuario',
+  VERIFICAR_USUARIO = 'Verificar_usuario',
+  DAR_BAJA_USUARIO = 'Dar_baja_usuario',
+  REACTIVAR_USUARIO = 'Reactivar_usuario',
+  ELIMINAR_USUARIO = 'Eliminar_usuario',
+  ACTUALIZAR_USUARIO = 'Actualizar_usuario',
+  CAMBIAR_CONTRASENA = 'Cambiar_contrasena',
+  ASIGNAR_ROL = 'Asignar_rol',
+  REMOVER_ROL = 'Remover_rol',
+  INICIAR_SESION = 'Iniciar_sesion',
+  CERRAR_SESION = 'Cerrar_sesion',
+  INICIAR_SESION_FAIL = 'Iniciar_sesion_fail',
+  CERRAR_SESION_FAIL = 'Cerrar_sesion_fail',
+  RENOVAR_TOKEN = 'Renovar_token',
+}

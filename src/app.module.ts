@@ -9,6 +9,14 @@ import { Operacion } from 'src/entities/operacion.entity';
 import { Rol } from 'src/entities/rol.entity';
 import { Sesion } from 'src/entities/sesion.entity';
 import { Usuario } from 'src/entities/usuario.entity';
+import { TokenModule } from './modules/token.module';
+import { AuthModule } from './modules/auth.module';
+import { AuthController } from './controllers/auth.controller';
+import { AuthService } from './services/auth.service';
+import { SesionModule } from './modules/sesion.module';
+import { SesionService } from './services/sesion.service';
+import { OperacionModule } from './modules/operacion.module';
+import { OperacionService } from './services/operacion.service';
 
 @Module({
   imports: [
@@ -18,8 +26,12 @@ import { Usuario } from 'src/entities/usuario.entity';
     }),
     TypeOrmModule.forRoot({ ...DataSourceConfig }),
     TypeOrmModule.forFeature([Cliente, Usuario, Sesion, Rol, Operacion]),
+    TokenModule,
+    AuthModule,
+    SesionModule,
+    OperacionModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, AuthController],
+  providers: [AppService, AuthService, SesionService, OperacionService],
 })
 export class AppModule {}
