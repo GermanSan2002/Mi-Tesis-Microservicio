@@ -17,6 +17,13 @@ import { SesionModule } from './modules/sesion.module';
 import { SesionService } from './services/sesion.service';
 import { OperacionModule } from './modules/operacion.module';
 import { OperacionService } from './services/operacion.service';
+import { UsuarioModule } from './modules/usuario.module';
+import { UsuarioService } from './services/usuario.service';
+import { ClienteModule } from './modules/cliente.module';
+import { ClienteService } from './services/cliente.service';
+import { RolService } from './services/rol.service';
+import { RolModule } from './modules/rol.module';
+import { UsersController } from './controllers/users.controller';
 
 @Module({
   imports: [
@@ -30,8 +37,19 @@ import { OperacionService } from './services/operacion.service';
     AuthModule,
     SesionModule,
     OperacionModule,
+    UsuarioModule,
+    ClienteModule,
+    RolModule
   ],
-  controllers: [AppController, AuthController],
-  providers: [AppService, AuthService, SesionService, OperacionService],
+  controllers: [AppController, AuthController, UsersController],
+  providers: [
+    AppService, 
+    AuthService, 
+    SesionService, 
+    OperacionService, 
+    UsuarioService, 
+    ClienteService,
+    RolService
+  ],
 })
 export class AppModule {}

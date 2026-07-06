@@ -8,7 +8,7 @@ export class CreateSesionDTO {
     description: 'ID del usuario propietario de la sesión',
   })
   @IsInt()
-  idUsuario: number;
+  idUsuario: string;
 
   @ApiProperty({
     example: '$2b$10$JrM2...',

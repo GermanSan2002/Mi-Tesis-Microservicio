@@ -5,8 +5,8 @@ import { Rol } from './rol.entity';
 
 @Entity('clientes')
 export class Cliente {
-  @PrimaryGeneratedColumn()
-  idCliente: number;
+  @PrimaryGeneratedColumn('uuid')
+  idCliente: string;
 
   @Column({ type: 'char', length: 1 })
   estado: string;
@@ -23,7 +23,6 @@ export class Cliente {
   @OneToMany(() => Usuario, (usuario) => usuario.cliente)
   usuarios: Usuario[];
 
-  @ManyToMany(() => Rol)
-  @JoinTable({ name: 'cliente_roles' }) // Tabla intermedia si aplica directa
+  @OneToMany(() => Rol, (rol) => rol.cliente)
   roles: Rol[];
 }

@@ -7,8 +7,8 @@ import { Rol } from './rol.entity';
 
 @Entity('usuarios')
 export class Usuario {
-  @PrimaryGeneratedColumn()
-  idUsuario: number;
+  @PrimaryGeneratedColumn('uuid')
+  idUsuario: string;
 
   @Column()
   contraseña: string; // Recordá encriptarla antes de guardar
@@ -38,7 +38,7 @@ export class Usuario {
   @OneToMany(() => Operacion, (operacion) => operacion.usuario)
   operaciones: Operacion[];
 
-  // Relación Muchos a Muchos con Roles mediante la tabla intermedia UsuarioRol
+  // Un usuario tiene muchos roles y un rol puede pertenecer a muchos usuarios (relación muchos a muchos)
   @ManyToMany(() => Rol)
   @JoinTable({
     name: 'usuario_rol', // Nombre de la tabla intermedia 'UsuarioRol'

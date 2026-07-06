@@ -41,5 +41,5 @@ export class CreateOperacionDTO {
     description: 'ID del usuario que realizó la operación',
   })
   @IsInt()
-  idUsuario: number;
+  idUsuario: string;
 }

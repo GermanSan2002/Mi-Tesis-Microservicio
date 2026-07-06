@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CreateSesionDTO } from 'src/dto/sesionDTO';
 import { Sesion } from 'src/entities/sesion.entity';
 import { Usuario } from 'src/entities/usuario.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 @Injectable()
 export class SesionService {
@@ -12,7 +12,12 @@ export class SesionService {
     private readonly sesionRepository: Repository<Sesion>,
   ) {}
 
-  async create(createSesionDTO: CreateSesionDTO): Promise<Sesion> {
+  // Helper privado para resolver dinámicamente si se usa la transacción activa o el repositorio estándar
+  private getRepository(manager?: EntityManager): Repository<Sesion> {
+    return manager ? manager.getRepository(Sesion) : this.sesionRepository;
+  }
+
+  async create(createSesionDTO: CreateSesionDTO, manager?: EntityManager): Promise<Sesion> {
     const sesion = this.sesionRepository.create({
       ...createSesionDTO,
       usuario: { idUsuario: createSesionDTO.idUsuario } as Usuario,
@@ -20,14 +25,16 @@ export class SesionService {
       ultimoUsoEn: new Date(),
     });
 
-    return await this.sesionRepository.save(sesion);
+    return await this.getRepository(manager).save(sesion);
   }
 
   async updateRefreshTokenHash(
-    idSesion: number,
+    idSesion: string,
     refreshTokenHash: string,
+    manager?: EntityManager,
   ): Promise<Sesion> {
-    const sesion = await this.sesionRepository.findOne({
+    const repo = this.getRepository(manager);
+    const sesion = await repo.findOne({
       where: { idSesion },
     });
 
@@ -38,11 +45,12 @@ export class SesionService {
     sesion.refreshTokenHash = refreshTokenHash;
     sesion.ultimoUsoEn = new Date();
 
-    return await this.sesionRepository.save(sesion);
+    return await repo.save(sesion);
   }
 
-  async updateSessionState(sesionId: number, estado: string) {
-    const sesion = await this.sesionRepository.findOne({
+  async updateSessionState(sesionId: string, estado: string, manager?: EntityManager) {
+    const repo = this.getRepository(manager);
+    const sesion = await repo.findOne({
       where: { idSesion: sesionId },
     });
 
@@ -53,11 +61,12 @@ export class SesionService {
     sesion.estado = estado;
     sesion.ultimoUsoEn = new Date();
 
-    return await this.sesionRepository.save(sesion);
+    return await repo.save(sesion);
   }
 
-  async hasActiveSession(idUsuario: number): Promise<boolean> {
-    const count = await this.sesionRepository.count({
+  async hasActiveSession(idUsuario: string, manager?: EntityManager): Promise<boolean> {
+    const repo = this.getRepository(manager);
+    const count = await repo.count({
       where: {
         usuario: { idUsuario },
         estado: 'A',
@@ -67,8 +76,9 @@ export class SesionService {
     return count > 0;
   }
 
-  async findById(idSesion: number): Promise<Sesion | null> {
-    const sesion = await this.sesionRepository.findOne({
+  async findById(idSesion: string, manager?: EntityManager): Promise<Sesion | null> {
+    const repo = this.getRepository(manager);
+    const sesion = await repo.findOne({
       where: { idSesion },
       relations: ['usuario'],
     });
@@ -76,12 +86,14 @@ export class SesionService {
     return sesion;
   }
 
-  async updateSesion(Sesion: Sesion): Promise<Sesion> {
-    return await this.sesionRepository.save(Sesion);
+  async updateSesion(Sesion: Sesion, manager?: EntityManager): Promise<Sesion> {
+    const repo = this.getRepository(manager);
+    return await repo.save(Sesion);
   }
 
-  async isActiveSession(idSesion: number): Promise<boolean> {
-    const count = await this.sesionRepository.count({
+  async isActiveSession(idSesion: string, manager?: EntityManager): Promise<boolean> {
+    const repo = this.getRepository(manager);
+    const count = await repo.count({
       where: {
         idSesion,
         estado: 'A',
@@ -92,10 +104,12 @@ export class SesionService {
   }
 
   async validateSession(
-    idSesion: number,
-    idUsuario: number,
+    idSesion: string,
+    idUsuario: string,
+    manager?: EntityManager,
   ): Promise<Sesion> {
-    const sesion = await this.sesionRepository.findOne({
+    const repo = this.getRepository(manager);
+    const sesion = await repo.findOne({
       where: { idSesion },
       relations: ['usuario'],
     });

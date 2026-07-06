@@ -3,8 +3,8 @@ import { Usuario } from './usuario.entity';
 
 @Entity('sesiones')
 export class Sesion {
-  @PrimaryGeneratedColumn()
-  idSesion: number;
+  @PrimaryGeneratedColumn('uuid')
+  idSesion: string;
 
   @Column({ type: 'timestamp' })
   creadoEn: Date;

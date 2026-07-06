@@ -1,23 +1,22 @@
 import { Injectable, UnauthorizedException,  } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as dotenv from 'dotenv';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from 'src/entities/usuario.entity';
-import { Rol } from 'src/entities/rol.entity';
-import { Sesion } from 'src/entities/sesion.entity';
 import { SesionService } from './sesion.service';
+import { UsuarioService } from './usuario.service';
 
 export interface AccessTokenPayload {
-  userId: number;       // Basado en idUsuario de tu diagrama de clases
-  idCliente: number;    // El Tenant ID crucial para el aislamiento de datos
-  sesionId: number;     // ID de la sesión activa
+  userId: string;       // Basado en idUsuario de tu diagrama de clases
+  idCliente: string;    // El Tenant ID crucial para el aislamiento de datos
+  sesionId: string;     // ID de la sesión activa
   roles: string[];      // Roles asignados para RBAC
 }
 
 export interface RefreshTokenPayload {
-  userId: number;
-  sesionId: number;
+  userId: string;
+  sesionId: string;
 }
 
 dotenv.config();
@@ -35,16 +34,16 @@ if (!refreshTokenSecret) {
 @Injectable()
 export class TokenService {
   constructor(
-    @InjectRepository(Usuario)
-    private readonly userRepository: Repository<Usuario>,
+    private readonly usuarioService: UsuarioService,
     private readonly sesionService: SesionService,
-    private readonly jwtService: JwtService, // Usamos el servicio nativo de NestJS
+    private readonly jwtService: JwtService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
    * Genera el AccessToken incluyendo las restricciones de negocio y contexto de empresa
    */
-  generateAccessToken(user: Usuario, sesionId: number): string {
+  generateAccessToken(user: Usuario, sesionId: string): string {
     // Mapeamos los nombres de los roles según el atributo del modelo ('nombre' o 'descripcion')
     const userId = user.idUsuario;
     const idCliente = user.cliente.idCliente;
@@ -68,7 +67,7 @@ export class TokenService {
   /**
    * Genera el RefreshToken (solo necesita identificar al usuario)
    */
-  generateRefreshToken(user: Usuario, sesionId: number): string {
+  generateRefreshToken(user: Usuario, sesionId: string): string {
     const userId = user.idUsuario;
 
     const payload: RefreshTokenPayload = { userId, sesionId };
@@ -115,29 +114,43 @@ export class TokenService {
   }
 
   async refreshAccessToken(refreshToken: string): Promise<string> {
+    // Crear el canal transaccional (QueryRunner)
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      // Verificamos usando el secreto correspondiente al refresh token
+      // Verificar el secreto del Refresh Token de forma est stateless en memoria
       const decoded = this.jwtService.verify<RefreshTokenPayload>(refreshToken, {
         secret: process.env.REFRESH_TOKEN_SECRET || 'refresh-secret',
       });
 
-      const user = await this.userRepository.findOne({
-        where: { idUsuario: decoded.userId }, // Usamos idUsuario tal cual tu diagrama
-        relations: ['roles', 'cliente'],     // Traemos el cliente asociado
-      });
-
+      // Buscar al usuario usando el método transaccional de UsuarioService
+      const user = await this.usuarioService.findUsuarioById(decoded.userId, queryRunner.manager);
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
+      // Validar el estado de la sesión usando el manager transaccional activo
       await this.sesionService.validateSession(
-          decoded.sesionId,
-          decoded.userId,
+        String(decoded.sesionId),
+        String(decoded.userId),
+        queryRunner.manager,
       );
-      
+
+      // Si todo el circuito de validación es correcto, confirmamos la transacción
+      await queryRunner.commitTransaction();
+
+      // Generamos el nuevo AccessToken (incluyendo idCliente y roles en el payload)
       return this.generateAccessToken(user, decoded.sesionId);
+
     } catch (error) {
+      // Si falla cualquier paso, revertimos
+      await queryRunner.rollbackTransaction();
       throw new UnauthorizedException('Invalid or expired refresh token');
+    } finally {
+      // Liberamos siempre la conexión del pool
+      await queryRunner.release();
     }
   }
 }

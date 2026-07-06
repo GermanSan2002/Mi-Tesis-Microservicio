@@ -1,7 +1,7 @@
 import {Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TokenService } from './token.service';
 import { Usuario } from 'src/entities/usuario.entity';
@@ -10,6 +10,7 @@ import { SesionService } from './sesion.service';
 import { CreateSesionDTO } from 'src/dto/sesionDTO';
 import { OperacionService } from './operacion.service';
 import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
+import { UsuarioService } from './usuario.service';
 
 dotenv.config();
 
@@ -18,11 +19,11 @@ const saltRounds = parseInt(process.env.HASH_SALT_ROUNDS || '10', 10);
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Usuario)
-    private readonly userRepository: Repository<Usuario>,
+    private readonly usuarioService: UsuarioService,
     private readonly sesionService: SesionService,
     private readonly operacionService: OperacionService,
     private readonly tokenService: TokenService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async hashPassword(password: string): Promise<string> {
@@ -39,11 +40,9 @@ export class AuthService {
   
   async login(credentialsDTO: CredentialsDTO): Promise<{ accessToken: string, refreshToken: string }> {
     const { email, password } = credentialsDTO;
-    // Buscar al usuario por correo electrónico y cargar sus roles y cliente
-    const user = await this.userRepository.findOne({
-      where: { correo: email },
-      relations: ['roles', 'cliente'],
-    });
+    
+    // Buscar el usuario por correo electrónico
+    const user = await this.usuarioService.findUsuarioByEmail(email);
 
     // Verificar si el usuario existe
     if (!user) {
@@ -68,44 +67,68 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Crear una nueva sesión para el usuario
-    const createSesionDTO: CreateSesionDTO = {
-      idUsuario: user.idUsuario,
-      estado: 'A',
-      refreshTokenHash: '',
-      expiraEn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    };
+    // Comprobar que el usuario esta verificado
+    if(!user.verificado){
+      throw new UnauthorizedException('User not verified');
+    }
 
-    const sesion = await this.sesionService.create(createSesionDTO);
+    // Iniciamos la transacción
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    await this.operacionService.create({
-      idUsuario: user.idUsuario,
-      fechaRealizacion: new Date(),
-      tipo: TipoOperacion.INICIAR_SESION,
-      metadatos: {
-        sesionId: sesion.idSesion,
-      },
-    });
+    try {
+      // Crear una nueva sesión para el usuario
+      const createSesionDTO: CreateSesionDTO = {
+        idUsuario: user.idUsuario,
+        estado: 'A',
+        refreshTokenHash: '',
+        expiraEn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      };
+      const sesion = await this.sesionService.create(createSesionDTO, queryRunner.manager);
 
-    // Generar el AccessToken y RefreshToken
-    const accessToken = this.tokenService.generateAccessToken(user, sesion.idSesion);
-    const refreshToken = this.tokenService.generateRefreshToken(user, sesion.idSesion);
-    // Guardar el hash del RefreshToken en la sesión
-    const refreshTokenHash = await this.hashPassword(refreshToken);
-    await this.sesionService.updateRefreshTokenHash(
-      sesion.idSesion,
-      refreshTokenHash,
-    );
+      // Registrar la operación de inicio de sesión exitoso
+      await this.operacionService.create({
+        idUsuario: user.idUsuario,
+        fechaRealizacion: new Date(),
+        tipo: TipoOperacion.INICIAR_SESION,
+        metadatos: { sesionId: sesion.idSesion },
+      }, queryRunner.manager);
 
-    // Retornar los tokens al cliente
-    return { accessToken, refreshToken };
+      // Generar los tokens
+      const accessToken = this.tokenService.generateAccessToken(user, sesion.idSesion);
+      const refreshToken = this.tokenService.generateRefreshToken(user, sesion.idSesion);
+      
+      // Guardar el hash del RefreshToken en la sesión
+      const refreshTokenHash = await this.hashPassword(refreshToken);
+      await this.sesionService.updateRefreshTokenHash(
+        String(sesion.idSesion),
+        refreshTokenHash,
+        queryRunner.manager,
+      );
+
+      // Si todo el circuito se completó con éxito, confirmamo los cambios físicos en la BD
+      await queryRunner.commitTransaction();
+
+      return { accessToken, refreshToken };
+    }catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      // Liberamos el queryRunner del pool de conexiones
+      await queryRunner.release();
+    }
   }
 
   async logout(refreshToken: string): Promise<void> {
-    // Verificar y decodificar el RefreshToken
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
+      // Verificar y decodificar el RefreshToken
       const payload = await this.tokenService.verifyRefreshToken(refreshToken);
-      const sesion = await this.sesionService.findById(payload.sesionId);
+      const sesion = await this.sesionService.findById(payload.sesionId, queryRunner.manager);
       if (!sesion) {
         throw new UnauthorizedException('Session not found');
       }
@@ -126,7 +149,7 @@ export class AuthService {
       // Actualizar el estado de la sesión a inactiva
       sesion.refreshTokenHash = '';
       sesion.estado = 'I';
-      await this.sesionService.updateSesion(sesion);
+      await this.sesionService.updateSesion(sesion, queryRunner.manager);
 
       // Registrar la operación de cierre de sesión
       await this.operacionService.create({
@@ -136,10 +159,13 @@ export class AuthService {
         metadatos: {
           sesionId: sesionId,
         },
-      });
-
+      }, queryRunner.manager);
     } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
+      await queryRunner.rollbackTransaction();
+      
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
   }
 }

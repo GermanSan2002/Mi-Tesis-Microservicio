@@ -5,17 +5,12 @@ import { TokenService } from 'src/services/token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { Sesion } from 'src/entities/sesion.entity';
 import { SesionModule } from './sesion.module';
+import { UsuarioModule } from './usuario.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Sesion]), // Asegúrate de incluir Sesion si lo necesitas
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: {
-        expiresIn: '1h',
-      },
-    }),
-    SesionModule
+    SesionModule,
+    UsuarioModule,
   ],
   providers: [TokenService],
   exports: [TokenService],

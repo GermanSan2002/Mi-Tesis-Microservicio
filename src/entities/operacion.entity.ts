@@ -4,8 +4,8 @@ import { TipoOperacion } from './tipo-operacion.enum';
 
 @Entity('operaciones')
 export class Operacion {
-  @PrimaryGeneratedColumn()
-  idOperacion: number;
+  @PrimaryGeneratedColumn('uuid')
+  idOperacion: string;
 
   @Column({ type: 'timestamp' })
   fechaRealizacion: Date;

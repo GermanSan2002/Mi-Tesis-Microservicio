@@ -7,13 +7,14 @@ import { AuthController } from 'src/controllers/auth.controller';
 import { Sesion } from 'src/entities/sesion.entity';
 import { SesionModule } from './sesion.module';
 import { OperacionModule } from './operacion.module';
+import { UsuarioModule } from './usuario.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Sesion]),
     TokenModule,
     SesionModule,
     OperacionModule,
+    UsuarioModule,
   ],
   providers: [AuthService],
   controllers: [AuthController],
