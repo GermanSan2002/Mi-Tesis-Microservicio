@@ -6,9 +6,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { Sesion } from 'src/entities/sesion.entity';
 import { SesionModule } from './sesion.module';
 import { UsuarioModule } from './usuario.module';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from 'src/strategy/jwt.strategy';
 
 @Module({
   imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: {
@@ -18,7 +21,7 @@ import { UsuarioModule } from './usuario.module';
     SesionModule,
     UsuarioModule,
   ],
-  providers: [TokenService],
+  providers: [TokenService, JwtStrategy],
   exports: [TokenService],
 })
 export class TokenModule {}

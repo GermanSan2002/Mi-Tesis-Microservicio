@@ -24,6 +24,7 @@ import { ClienteService } from './services/cliente.service';
 import { RolService } from './services/rol.service';
 import { RolModule } from './modules/rol.module';
 import { UsersController } from './controllers/users.controller';
+import { ClienteController } from './controllers/cliente.controller';
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { UsersController } from './controllers/users.controller';
     ClienteModule,
     RolModule
   ],
-  controllers: [AppController, AuthController, UsersController],
+  controllers: [AppController, AuthController, UsersController, ClienteController],
   providers: [
     AppService, 
     AuthService, 

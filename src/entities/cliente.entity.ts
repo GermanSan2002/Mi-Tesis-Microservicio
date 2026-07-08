@@ -14,6 +14,9 @@ export class Cliente {
   @Column()
   mailContacto: string;
 
+  @Column({ name: 'api_key_hash', nullable: true, select: false })
+  apiKeyHash: string;
+
   @Column()
   nombre: string;
 

@@ -2,14 +2,15 @@ import { Injectable, UnauthorizedException,  } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as dotenv from 'dotenv';
 import { DataSource, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from 'src/entities/usuario.entity';
 import { SesionService } from './sesion.service';
 import { UsuarioService } from './usuario.service';
+import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 
 export interface AccessTokenPayload {
   userId: string;       // Basado en idUsuario de tu diagrama de clases
   idCliente: string;    // El Tenant ID crucial para el aislamiento de datos
+  tipo: TipoUsuario;    // El tipo de usuario
   sesionId: string;     // ID de la sesión activa
   roles: string[];      // Roles asignados para RBAC
 }
@@ -47,6 +48,7 @@ export class TokenService {
     // Mapeamos los nombres de los roles según el atributo del modelo ('nombre' o 'descripcion')
     const userId = user.idUsuario;
     const idCliente = user.cliente.idCliente;
+    const tipo = user.tipo;
     const roles = user.roles || [];
 
     const roleNames = roles.map(role => role.nombre);
@@ -54,6 +56,7 @@ export class TokenService {
     const payload: AccessTokenPayload = {
       userId,
       idCliente, 
+      tipo,
       sesionId,
       roles: roleNames,
     };
