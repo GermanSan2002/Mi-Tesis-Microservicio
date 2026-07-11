@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsString, Length } from 'class-validator';
-
+import { IsDateString, IsEnum, IsInt, IsString, Length } from 'class-validator';
+import { EstadosSesion } from 'src/entities/estadosSesiones.enum';
 
 export class CreateSesionDTO {
   @ApiProperty({
@@ -25,10 +25,12 @@ export class CreateSesionDTO {
   expiraEn?: Date;
 
   @ApiProperty({
-    example: 'A',
-    description: 'Estado de la sesión (A = Activa, I = Inactiva)',
+    example: EstadosSesion.ACTIVA,
+    enum: EstadosSesion,
+    description: 'Estado de la sesión (A = Activa, I = Inactiva, E = Expirada)',
   })
-  @IsString()
-  @Length(1, 1)
-  estado: string;
+  @IsEnum(EstadosSesion, {
+    message: `El plan debe ser uno de los siguientes valores: ${Object.values(EstadosSesion).join(', ')}`,
+  })
+  estado: EstadosSesion;
 }

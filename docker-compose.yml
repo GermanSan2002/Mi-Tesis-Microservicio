@@ -12,8 +12,9 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET}
       HASH_SALT_ROUNDS: ${HASH_SALT_ROUNDS}
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      DB_HOST: mysql-api
+      DB_PORT: 3306
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
@@ -32,11 +33,13 @@ services:
     container_name: mysql-api
     ports:
       - '3307:3306'
+    env_file:
+      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: zxkesV803rAsWKDHTLTB
-      MYSQL_DATABASE: users
-      MYSQL_USER: micro
-      MYSQL_PASSWORD: zxkesV803rAsWKDHTLTB
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
 
@@ -48,7 +51,7 @@ services:
     environment:
       PMA_HOST: mysql-api
       PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: zxkesV803rAsWKDHTLTB
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     depends_on:
       - mysql-api
 

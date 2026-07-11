@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException,  } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as dotenv from 'dotenv';
 import { DataSource, Repository } from 'typeorm';
@@ -8,11 +8,11 @@ import { UsuarioService } from './usuario.service';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 
 export interface AccessTokenPayload {
-  userId: string;       // Basado en idUsuario de tu diagrama de clases
-  idCliente: string;    // El Tenant ID crucial para el aislamiento de datos
-  tipo: TipoUsuario;    // El tipo de usuario
-  sesionId: string;     // ID de la sesión activa
-  roles: string[];      // Roles asignados para RBAC
+  userId: string; // Basado en idUsuario de tu diagrama de clases
+  idCliente: string; // El Tenant ID crucial para el aislamiento de datos
+  tipo: TipoUsuario; // El tipo de usuario
+  sesionId: string; // ID de la sesión activa
+  roles: string[]; // Roles asignados para RBAC
 }
 
 export interface RefreshTokenPayload {
@@ -26,10 +26,12 @@ const jwtSecret = process.env.JWT_SECRET;
 const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET || 'refresh-secret';
 
 if (!jwtSecret) {
-    throw new Error('JWT_SECRET is not defined in the environment variables');
+  throw new Error('JWT_SECRET is not defined in the environment variables');
 }
 if (!refreshTokenSecret) {
-    throw new Error('REFRESH_TOKEN_SECRET is not defined in the environment variables');
+  throw new Error(
+    'REFRESH_TOKEN_SECRET is not defined in the environment variables',
+  );
 }
 
 @Injectable()
@@ -51,11 +53,11 @@ export class TokenService {
     const tipo = user.tipo;
     const roles = user.roles || [];
 
-    const roleNames = roles.map(role => role.nombre);
+    const roleNames = roles.map((role) => role.nombre);
 
     const payload: AccessTokenPayload = {
       userId,
-      idCliente, 
+      idCliente,
       tipo,
       sesionId,
       roles: roleNames,
@@ -74,7 +76,7 @@ export class TokenService {
     const userId = user.idUsuario;
 
     const payload: RefreshTokenPayload = { userId, sesionId };
-    
+
     return this.jwtService.sign(payload, {
       secret: process.env.REFRESH_TOKEN_SECRET || 'refresh-secret', // Secret alternativo si se prefiere separar
       expiresIn: '7d',
@@ -86,11 +88,13 @@ export class TokenService {
    */
   async verifyToken(token: string): Promise<AccessTokenPayload> {
     try {
-      const payload = this.jwtService.verify<AccessTokenPayload>(token, {secret: jwtSecret});
+      const payload = this.jwtService.verify<AccessTokenPayload>(token, {
+        secret: jwtSecret,
+      });
 
       await this.sesionService.validateSession(
-          payload.sesionId,
-          payload.userId,
+        payload.sesionId,
+        payload.userId,
       );
 
       return payload;
@@ -106,8 +110,8 @@ export class TokenService {
       });
 
       await this.sesionService.validateSession(
-          payload.sesionId,
-          payload.userId,
+        payload.sesionId,
+        payload.userId,
       );
 
       return payload;
@@ -124,12 +128,18 @@ export class TokenService {
 
     try {
       // Verificar el secreto del Refresh Token de forma est stateless en memoria
-      const decoded = this.jwtService.verify<RefreshTokenPayload>(refreshToken, {
-        secret: process.env.REFRESH_TOKEN_SECRET || 'refresh-secret',
-      });
+      const decoded = this.jwtService.verify<RefreshTokenPayload>(
+        refreshToken,
+        {
+          secret: process.env.REFRESH_TOKEN_SECRET || 'refresh-secret',
+        },
+      );
 
       // Buscar al usuario usando el método transaccional de UsuarioService
-      const user = await this.usuarioService.findUsuarioById(decoded.userId, queryRunner.manager);
+      const user = await this.usuarioService.findUsuarioById(
+        decoded.userId,
+        queryRunner.manager,
+      );
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
@@ -146,7 +156,6 @@ export class TokenService {
 
       // Generamos el nuevo AccessToken (incluyendo idCliente y roles en el payload)
       return this.generateAccessToken(user, decoded.sesionId);
-
     } catch (error) {
       // Si falla cualquier paso, revertimos
       await queryRunner.rollbackTransaction();

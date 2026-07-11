@@ -6,9 +6,7 @@ import { AccessTokenPayload } from 'src/services/token.service'; // Ajustá las 
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private readonly sesionService: SesionService,
-  ) {
+  constructor(private readonly sesionService: SesionService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -21,19 +19,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * Se ejecuta AUTOMÁTICAMENTE si el token pasó la validación criptográfica de Passport.
    * @param payload Es el JSON decodificado del token (coincide con tu AccessTokenPayload)
    */
-  async validate(payload: any): Promise<AccessTokenPayload> {
+  async validate(req: any, payload: any): Promise<AccessTokenPayload> {
     try {
-      await this.sesionService.validateSession(payload.sesionId, payload.userId)
+      console.log('Sesion: ' + payload.sesionId);
+      console.log('Usuario: ' + payload.userId);
+      await this.sesionService.validateSession(
+        payload.sesionId,
+        payload.userId,
+      );
 
       return {
         userId: payload.userId,
         idCliente: payload.idCliente, // Crucial para tu Tenant Isolation
-        tipo: payload.tipo,           // Crucial para tu TipoUsuarioGuard
+        tipo: payload.tipo, // Crucial para tu TipoUsuarioGuard
         sesionId: payload.sesionId,
         roles: payload.roles,
       };
     } catch (error) {
-      throw new UnauthorizedException('La sesión asociada a este token ha expirado o fue revocada');
+      console.log(error);
+      throw new UnauthorizedException(
+        'La sesión asociada a este token ha expirado o fue revocada',
+      );
     }
   }
 }

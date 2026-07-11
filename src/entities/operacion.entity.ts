@@ -13,7 +13,7 @@ export class Operacion {
   @Column({ type: 'json', nullable: true })
   metadatos: any;
 
-  @Column(({ type: 'enum', enum: TipoOperacion }))
+  @Column({ type: 'enum', enum: TipoOperacion })
   tipo: string;
 
   @ManyToOne(() => Usuario, (usuario) => usuario.operaciones)

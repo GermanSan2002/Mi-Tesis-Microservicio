@@ -1,4 +1,8 @@
-import {Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { DataSource, Repository } from 'typeorm';
@@ -11,6 +15,7 @@ import { CreateSesionDTO } from 'src/dto/sesionDTO';
 import { OperacionService } from './operacion.service';
 import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
 import { UsuarioService } from './usuario.service';
+import { EstadosSesion } from 'src/entities/estadosSesiones.enum';
 
 dotenv.config();
 
@@ -37,10 +42,11 @@ export class AuthService {
     return bcrypt.compare(password, hashedPassword);
   }
 
-  
-  async login(credentialsDTO: CredentialsDTO): Promise<{ accessToken: string, refreshToken: string }> {
+  async login(
+    credentialsDTO: CredentialsDTO,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const { email, password } = credentialsDTO;
-    
+
     // Buscar el usuario por correo electrónico
     const user = await this.usuarioService.findUsuarioByEmail(email);
 
@@ -68,7 +74,7 @@ export class AuthService {
     }
 
     // Comprobar que el usuario esta verificado
-    if(!user.verificado){
+    if (!user.verificado) {
       throw new UnauthorizedException('User not verified');
     }
 
@@ -81,24 +87,36 @@ export class AuthService {
       // Crear una nueva sesión para el usuario
       const createSesionDTO: CreateSesionDTO = {
         idUsuario: user.idUsuario,
-        estado: 'A',
+        estado: EstadosSesion.ACTIVA,
         refreshTokenHash: '',
         expiraEn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       };
-      const sesion = await this.sesionService.create(createSesionDTO, queryRunner.manager);
+      const sesion = await this.sesionService.create(
+        createSesionDTO,
+        queryRunner.manager,
+      );
 
       // Registrar la operación de inicio de sesión exitoso
-      await this.operacionService.create({
-        idUsuario: user.idUsuario,
-        fechaRealizacion: new Date(),
-        tipo: TipoOperacion.INICIAR_SESION,
-        metadatos: { sesionId: sesion.idSesion },
-      }, queryRunner.manager);
+      await this.operacionService.create(
+        {
+          idUsuario: user.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.INICIAR_SESION,
+          metadatos: { sesionId: sesion.idSesion },
+        },
+        queryRunner.manager,
+      );
 
       // Generar los tokens
-      const accessToken = this.tokenService.generateAccessToken(user, sesion.idSesion);
-      const refreshToken = this.tokenService.generateRefreshToken(user, sesion.idSesion);
-      
+      const accessToken = this.tokenService.generateAccessToken(
+        user,
+        sesion.idSesion,
+      );
+      const refreshToken = this.tokenService.generateRefreshToken(
+        user,
+        sesion.idSesion,
+      );
+
       // Guardar el hash del RefreshToken en la sesión
       const refreshTokenHash = await this.hashPassword(refreshToken);
       await this.sesionService.updateRefreshTokenHash(
@@ -111,7 +129,7 @@ export class AuthService {
       await queryRunner.commitTransaction();
 
       return { accessToken, refreshToken };
-    }catch (error) {
+    } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
@@ -128,7 +146,10 @@ export class AuthService {
     try {
       // Verificar y decodificar el RefreshToken
       const payload = await this.tokenService.verifyRefreshToken(refreshToken);
-      const sesion = await this.sesionService.findById(payload.sesionId, queryRunner.manager);
+      const sesion = await this.sesionService.findById(
+        payload.sesionId,
+        queryRunner.manager,
+      );
       if (!sesion) {
         throw new UnauthorizedException('Session not found');
       }
@@ -141,28 +162,34 @@ export class AuthService {
       }
 
       // Verificar si el hash del RefreshToken coincide con el almacenado en la sesión
-      const isRefreshTokenValid = await this.comparePassword(refreshToken, sesion.refreshTokenHash);
+      const isRefreshTokenValid = await this.comparePassword(
+        refreshToken,
+        sesion.refreshTokenHash,
+      );
       if (!isRefreshTokenValid) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       // Actualizar el estado de la sesión a inactiva
       sesion.refreshTokenHash = '';
-      sesion.estado = 'I';
+      sesion.estado = EstadosSesion.INVALIDA;
       await this.sesionService.updateSesion(sesion, queryRunner.manager);
 
       // Registrar la operación de cierre de sesión
-      await this.operacionService.create({
-        idUsuario: payload.userId,
-        fechaRealizacion: new Date(),
-        tipo: TipoOperacion.CERRAR_SESION,
-        metadatos: {
-          sesionId: sesionId,
+      await this.operacionService.create(
+        {
+          idUsuario: payload.userId,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.CERRAR_SESION,
+          metadatos: {
+            sesionId: sesionId,
+          },
         },
-      }, queryRunner.manager);
+        queryRunner.manager,
+      );
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      
+
       throw error;
     } finally {
       await queryRunner.release();

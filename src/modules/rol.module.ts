@@ -4,9 +4,7 @@ import { Rol } from 'src/entities/rol.entity';
 import { RolService } from 'src/services/rol.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Rol]),
-  ],
+  imports: [TypeOrmModule.forFeature([Rol])],
   providers: [RolService],
   exports: [RolService],
 })

@@ -10,12 +10,7 @@ import { OperacionModule } from './operacion.module';
 import { UsuarioModule } from './usuario.module';
 
 @Module({
-  imports: [
-    TokenModule,
-    SesionModule,
-    OperacionModule,
-    UsuarioModule,
-  ],
+  imports: [TokenModule, SesionModule, OperacionModule, UsuarioModule],
   providers: [AuthService],
   controllers: [AuthController],
   exports: [AuthService],

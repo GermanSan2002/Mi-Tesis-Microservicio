@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Usuario } from 'src/entities/usuario.entity'; 
+import { Usuario } from 'src/entities/usuario.entity';
 import { TokenService } from 'src/services/token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { Sesion } from 'src/entities/sesion.entity';

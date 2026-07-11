@@ -46,10 +46,7 @@ export class AuthController {
     status: 400,
     description: 'Error al generar el hash',
   })
-  async hashPassword(
-    @Body() hashDTO: HashDTO,
-    @Res() res: Response,
-  ) {
+  async hashPassword(@Body() hashDTO: HashDTO, @Res() res: Response) {
     try {
       const hash = await this.authService.hashPassword(hashDTO.password);
 
@@ -59,9 +56,7 @@ export class AuthController {
     } catch (error: unknown) {
       return res.status(400).json({
         message:
-          error instanceof Error
-            ? error.message
-            : 'Unknown error occurred',
+          error instanceof Error ? error.message : 'Unknown error occurred',
       });
     }
   }
@@ -73,7 +68,8 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid credentials' })
   async login(@Body() credentialsDTO: CredentialsDTO, @Res() res: Response) {
     try {
-      const { accessToken, refreshToken } = await this.authService.login(credentialsDTO);
+      const { accessToken, refreshToken } =
+        await this.authService.login(credentialsDTO);
       res.status(200).json({ accessToken, refreshToken });
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -104,10 +100,19 @@ export class AuthController {
   }
 
   @Post('checkAuth')
-  @ApiOperation({ summary: 'Decodificar un token JWT para verificar autentificacion' })
-  @ApiResponse({ status: 201, description: 'Token decodificado correctamente', schema: { example: { decoded: { userId: '12345' } } } })
+  @ApiOperation({
+    summary: 'Decodificar un token JWT para verificar autentificacion',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Token decodificado correctamente',
+    schema: { example: { decoded: { userId: '12345' } } },
+  })
   @ApiResponse({ status: 401, description: 'Token inválido o expirado' })
-  @ApiBody({ description: 'Token JWT a decodificar', schema: { example: { token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } } })
+  @ApiBody({
+    description: 'Token JWT a decodificar',
+    schema: { example: { token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } },
+  })
   async checkAuth(@Body('token') token: string) {
     try {
       const decoded = await this.tokenService.verifyToken(token);
@@ -118,13 +123,28 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refrescar el access token utilizando el refresh token' })
-  @ApiResponse({ status: 200, description: 'Nuevo access token generado', schema: { example: { accessToken: 'newAccessToken' } } })
-  @ApiResponse({ status: 401, description: 'Refresh token inválido o expirado' })
-  @ApiBody({ description: 'Refresh token para solicitar un nuevo access token', schema: { example: { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } } })
+  @ApiOperation({
+    summary: 'Refrescar el access token utilizando el refresh token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Nuevo access token generado',
+    schema: { example: { accessToken: 'newAccessToken' } },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh token inválido o expirado',
+  })
+  @ApiBody({
+    description: 'Refresh token para solicitar un nuevo access token',
+    schema: {
+      example: { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+    },
+  })
   async refreshAccessToken(@Body('refreshToken') refreshToken: string) {
     try {
-      const newAccessToken = await this.tokenService.refreshAccessToken(refreshToken);
+      const newAccessToken =
+        await this.tokenService.refreshAccessToken(refreshToken);
       return { accessToken: newAccessToken };
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');

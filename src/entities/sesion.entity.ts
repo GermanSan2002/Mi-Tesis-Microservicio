@@ -1,7 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  Index,
+} from 'typeorm';
 import { Usuario } from './usuario.entity';
+import { EstadosSesion } from './estadosSesiones.enum';
 
 @Entity('sesiones')
+@Index('IDX_sesion_activa_id', ['idSesion'], {
+  where: `"estado" = '${EstadosSesion.ACTIVA}'`,
+})
 export class Sesion {
   @PrimaryGeneratedColumn('uuid')
   idSesion: string;
@@ -9,8 +19,8 @@ export class Sesion {
   @Column({ type: 'timestamp' })
   creadoEn: Date;
 
-  @Column({ type: 'char', length: 1 })
-  estado: string;
+  @Column({ type: 'enum', enum: EstadosSesion })
+  estado: EstadosSesion;
 
   @Column({ type: 'timestamp' })
   expiraEn: Date;

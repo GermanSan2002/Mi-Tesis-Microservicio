@@ -25,6 +25,7 @@ import { RolService } from './services/rol.service';
 import { RolModule } from './modules/rol.module';
 import { UsersController } from './controllers/users.controller';
 import { ClienteController } from './controllers/cliente.controller';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ClienteController } from './controllers/cliente.controller';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({ ...DataSourceConfig }),
     TypeOrmModule.forFeature([Cliente, Usuario, Sesion, Rol, Operacion]),
     TokenModule,
@@ -40,17 +42,22 @@ import { ClienteController } from './controllers/cliente.controller';
     OperacionModule,
     UsuarioModule,
     ClienteModule,
-    RolModule
+    RolModule,
   ],
-  controllers: [AppController, AuthController, UsersController, ClienteController],
+  controllers: [
+    AppController,
+    AuthController,
+    UsersController,
+    ClienteController,
+  ],
   providers: [
-    AppService, 
-    AuthService, 
-    SesionService, 
-    OperacionService, 
-    UsuarioService, 
+    AppService,
+    AuthService,
+    SesionService,
+    OperacionService,
+    UsuarioService,
     ClienteService,
-    RolService
+    RolService,
   ],
 })
 export class AppModule {}

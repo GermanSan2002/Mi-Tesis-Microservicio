@@ -1,6 +1,6 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger'; // 🚀 IMPORTANTE: Importamos el decorador de Swagger
-import { PlanesSuscripcion } from '../entities/planes-suscripcion.enum'; 
+import { PlanesSuscripcion } from '../entities/planes-suscripcion.enum';
 
 export class CreateClienteDto {
   @ApiProperty({
@@ -16,7 +16,10 @@ export class CreateClienteDto {
     description: 'Correo electrónico corporativo para el contacto principal',
     example: 'contacto@empresalogistica.com',
   })
-  @IsEmail({}, { message: 'El mail de contacto debe ser un correo electrónico válido' })
+  @IsEmail(
+    {},
+    { message: 'El mail de contacto debe ser un correo electrónico válido' },
+  )
   @IsNotEmpty({ message: 'El mail de contacto es requerido' })
   mailContacto: string;
 

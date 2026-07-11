@@ -1,20 +1,28 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToMany,
+  JoinTable,
+} from 'typeorm';
 import { PlanesSuscripcion } from './planes-suscripcion.enum';
 import { Usuario } from './usuario.entity';
 import { Rol } from './rol.entity';
+import { EstadosEntidades } from './estadosEntidades';
 
 @Entity('clientes')
 export class Cliente {
   @PrimaryGeneratedColumn('uuid')
   idCliente: string;
 
-  @Column({ type: 'char', length: 1 })
-  estado: string;
+  @Column({ type: 'enum', enum: EstadosEntidades })
+  estado: EstadosEntidades;
 
   @Column()
   mailContacto: string;
 
-  @Column({ name: 'api_key_hash', nullable: true, select: false })
+  @Column({ name: 'api_key_hash', nullable: true, select: false, unique: true })
   apiKeyHash: string;
 
   @Column()

@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 
@@ -8,8 +14,11 @@ export class TipoUsuarioGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     // Obtener los tipos de usuario permitidos para este endpoint desde los metadatos
-    const tipoValidar = this.reflector.get<TipoUsuario[]>('tipo', context.getHandler());
-    console.log("Tipo a validar:" + tipoValidar);
+    const tipoValidar = this.reflector.get<TipoUsuario[]>(
+      'tipo',
+      context.getHandler(),
+    );
+    console.log('Tipo a validar:' + tipoValidar);
     if (!tipoValidar) {
       return true;
     }
@@ -23,10 +32,12 @@ export class TipoUsuarioGuard implements CanActivate {
     }
 
     // Validar que el tipo de usuario en el JWT coincida con los permitidos
-    const valiidarTipo = (tipoValidar == user.tipo);
+    const valiidarTipo = tipoValidar == user.tipo;
 
     if (!valiidarTipo) {
-      throw new ForbiddenException('No tienes permisos para acceder a este recurso');
+      throw new ForbiddenException(
+        'No tienes permisos para acceder a este recurso',
+      );
     }
 
     return true;

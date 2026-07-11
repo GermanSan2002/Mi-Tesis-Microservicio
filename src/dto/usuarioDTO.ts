@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
+import { EstadosEntidades } from 'src/entities/estadosEntidades';
 
 export class CreateUsuarioDTO {
   @ApiProperty({
@@ -27,13 +28,49 @@ export class CreateUsuarioDTO {
   @IsEmail()
   correo: string;
 
+  @ApiPropertyOptional({
+    example: {
+      telefono: '1122334455',
+      cargo: 'Administrador',
+    },
+    description: 'Parámetros adicionales del usuario',
+  })
+  @IsOptional()
+  @IsObject()
+  parametros?: any;
+
+  @ApiPropertyOptional({
+    example: ['ADM001', 'VENDEDOR'],
+    description: 'IDs de los roles asignados al usuario',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  roles?: string[];
+}
+
+export class ModifyUsuarioDTO {
   @ApiProperty({
-    example: 'A',
-    description: 'Estado del usuario (A = Activo, I = Inactivo)',
+    example: 'Password123!',
+    description: 'Contraseña del usuario (se almacenará encriptada)',
   })
   @IsString()
-  @Length(1, 1)
-  estado: string;
+  contraseña: string;
+
+  @ApiProperty({
+    example: 'usuario@empresa.com',
+    description: 'Correo electrónico del usuario',
+  })
+  @IsEmail()
+  correo: string;
+
+  @ApiProperty({
+    example: 'A',
+    enum: EstadosEntidades,
+    description: 'Estado del usuario (A = Alta, B = Baja)',
+  })
+  @IsEnum(EstadosEntidades)
+  estado: EstadosEntidades;
 
   @ApiPropertyOptional({
     example: {
