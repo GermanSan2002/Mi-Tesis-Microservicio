@@ -17,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   /**
    * Se ejecuta AUTOMÁTICAMENTE si el token pasó la validación criptográfica de Passport.
-   * @param payload Es el JSON decodificado del token (coincide con tu AccessTokenPayload)
+   * @param payload Es el JSON decodificado del token
    */
   async validate(req: any, payload: any): Promise<AccessTokenPayload> {
     try {

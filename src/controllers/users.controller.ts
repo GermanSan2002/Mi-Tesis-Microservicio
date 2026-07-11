@@ -20,6 +20,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { BajaAltaDTO } from 'src/dto/bajaDTO';
 import { CreateUsuarioDTO } from 'src/dto/usuarioDTO';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 import { Usuario } from 'src/entities/usuario.entity';
@@ -155,5 +156,93 @@ export class UsersController {
     const idCliente = req.idCliente;
 
     return await this.usuarioService.getUsuariosClientes(idCliente);
+  }
+
+  @Patch('/usuarios/:idUsuario/baja')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TipoUsuarioGuard,ApiKeyGuard)
+  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Dar de baja usuario de un cliente',
+    description:
+      'Permite a un usuario administrador de un cliente dar de baja un usuario registrado en su organizacion',
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  @ApiBody({
+    type: BajaAltaDTO,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario dado de baja exitosamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El usuario no pertenece al cliente especificado.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'El usuario ya se encuentra dado de baja',
+  })
+  async darBajaUsuario(
+    @Req() req: any,
+    @Param('idUsuario') idUsuario: string,
+    @Body() bajaDTO: BajaAltaDTO
+  ){
+    const idCliente = req.idCliente;
+
+    return await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo);
+  }
+
+  @Patch('/usuarios/:idUsuario/alta')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TipoUsuarioGuard,ApiKeyGuard)
+  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Dar de alta usuario de un cliente',
+    description:
+      'Permite a un usuario administrador de un cliente dar de alta un usuario registrado en su organizacion dado de baja',
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  @ApiBody({
+    type: BajaAltaDTO,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario dado de baja exitosamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El usuario no pertenece al cliente especificado.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'El usuario ya se encuentra dado de alta',
+  })
+  async darAltaUsuario(
+    @Req() req: any,
+    @Param('idUsuario') idUsuario: string,
+    @Body() altaDTO: BajaAltaDTO
+  ){
+    const idCliente = req.idCliente;
+
+    return await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo);
   }
 }

@@ -16,6 +16,7 @@ import { OperacionService } from './operacion.service';
 import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
 import { UsuarioService } from './usuario.service';
 import { EstadosSesion } from 'src/entities/estadosSesiones.enum';
+import { EstadosEntidades } from 'src/entities/estadosEntidades';
 
 dotenv.config();
 
@@ -62,14 +63,11 @@ export class AuthService {
     );
     if (!isPasswordValid) {
       // Registrar la operación de inicio de sesión fallido
-      await this.operacionService.create({
-        idUsuario: user.idUsuario,
-        fechaRealizacion: new Date(),
-        tipo: TipoOperacion.INICIAR_SESION_FAIL,
-        metadatos: {
-          motivo: 'Contraseña incorrecta',
-        },
-      });
+      const usuarioFallido = await this.usuarioService.registrarLoginFallido(user);
+      
+      if(user.estado = EstadosEntidades.BAJA){
+        throw new UnauthorizedException('Invalid email or password. User blocked, recover password');  
+      }
       throw new UnauthorizedException('Invalid email or password');
     }
 

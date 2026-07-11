@@ -262,4 +262,145 @@ export class UsuarioService {
       await queryRunner.release();
     }
   }
+
+  async darAltaUsuario(idUsuario: string, idCliente: string, motivo?: string): Promise<void>{
+    const usuario = await this.findUsuarioById(idUsuario);
+
+    if(!usuario){
+      throw new NotFoundException("Usuario no encontrado")
+    }
+    if(usuario.cliente.idCliente != idCliente){
+      throw new ConflictException("El usuario no pertece al cliente");
+    }
+    if(usuario.estado == EstadosEntidades.ALTA){
+      throw new BadRequestException("Usuario ya dado de alta");
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try{
+      const repositorio = this.getRepository(queryRunner.manager);
+
+      usuario.estado = EstadosEntidades.ALTA;
+
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.DAR_ALTA_USUARIO,
+          metadatos: {
+            motivo: motivo,
+          },
+        },
+        queryRunner.manager,
+      );
+
+      repositorio.save(usuario);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+
+      throw new InternalServerErrorException('Could not update user');
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string): Promise<void>{
+    const usuario = await this.findUsuarioById(idUsuario);
+
+    if(!usuario){
+      throw new NotFoundException("Usuario no encontrado")
+    }
+    if(usuario.cliente.idCliente != idCliente){
+      throw new ConflictException("El usuario no pertece al cliente");
+    }
+    if(usuario.estado == EstadosEntidades.BAJA){
+      throw new BadRequestException("Usuario ya dado de baja");
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try{
+      const repositorio = this.getRepository(queryRunner.manager);
+
+      usuario.estado = EstadosEntidades.BAJA;
+
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.DAR_BAJA_USUARIO, // Asegúrate de tener este tipo en tu enum
+          metadatos: {
+            motivo: motivo,
+          },
+        },
+        queryRunner.manager,
+      );
+
+      repositorio.save(usuario);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+
+      throw new InternalServerErrorException('Could not update user');
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async registrarLoginFallido(usuario: Usuario): Promise<Usuario>{
+    usuario.intentosFallidosLogin++;
+
+    if(usuario.intentosFallidosLogin>=3){
+      usuario.estado = EstadosEntidades.BAJA;
+      usuario.intentosFallidosLogin = 0;
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try{
+      const repositorio = this.getRepository(queryRunner.manager);
+
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.INICIAR_SESION_FAIL, // Asegúrate de tener este tipo en tu enum
+          metadatos: {
+            motivo: 'Intentos de sesion fallidos consecutivos. Bloqueo de seguridad',
+          },
+        },
+        queryRunner.manager,
+      );
+
+      if(usuario.estado == EstadosEntidades.BAJA){
+        await this.operacionService.create(
+          {
+            idUsuario: usuario.idUsuario,
+            fechaRealizacion: new Date(),
+            tipo: TipoOperacion.DAR_BAJA_USUARIO,
+            metadatos: {
+              motivo: 'Intentos de sesion fallidos consecutivos. Bloqueo de seguridad',
+            },
+          },
+          queryRunner.manager
+        );
+      }
+
+      repositorio.save(usuario);
+
+      return usuario;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+
+      throw new InternalServerErrorException('Could not update user');
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
