@@ -15,6 +15,12 @@ export interface AccessTokenPayload {
   roles: string[]; // Roles asignados para RBAC
 }
 
+export interface RecuperarContraseñaPayload {
+  userId: string;
+  clientId: string;
+  correo: string
+}
+
 export interface RefreshTokenPayload {
   userId: string;
   sesionId: string;
@@ -83,10 +89,23 @@ export class TokenService {
     });
   }
 
+  generateRecuperarToken(user: Usuario): string{
+    const userId = user.idUsuario;
+    const clientId = user.cliente.idCliente;
+    const correo = user.correo;
+
+    const payload: RecuperarContraseñaPayload = {userId, clientId, correo}
+
+    return this.jwtService.sign(payload, {
+      secret: jwtSecret,
+      expiresIn: '30m',
+    });
+  }
+
   /**
    * Verifica un AccessToken de manera segura
    */
-  async verifyToken(token: string): Promise<AccessTokenPayload> {
+  async verifyAccessToken(token: string): Promise<AccessTokenPayload> {
     try {
       const payload = this.jwtService.verify<AccessTokenPayload>(token, {
         secret: jwtSecret,
@@ -117,6 +136,18 @@ export class TokenService {
       return payload;
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+  }
+
+  async verifyRecuperarToken(token: string): Promise<RecuperarContraseñaPayload> {
+    try {
+      const payload = this.jwtService.verify<RecuperarContraseñaPayload>(token, {
+        secret: jwtSecret,
+      });
+
+      return payload;
+    } catch (err) {
+      throw new UnauthorizedException('Invalid or expired token');
     }
   }
 

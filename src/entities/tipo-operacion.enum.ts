@@ -2,7 +2,7 @@ export enum TipoOperacion {
   CREAR_USUARIO = 'Crear_usuario',
   VERIFICAR_USUARIO = 'Verificar_usuario',
   DAR_BAJA_USUARIO = 'Dar_baja_usuario',
-  DAR_ALTA_USUARIO = 'Dar_baja_usuario',
+  DAR_ALTA_USUARIO = 'Dar_alta_usuario',
   REACTIVAR_USUARIO = 'Reactivar_usuario',
   ELIMINAR_USUARIO = 'Eliminar_usuario',
   ACTUALIZAR_USUARIO = 'Actualizar_usuario',

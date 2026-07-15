@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from 'src/entities/usuario.entity';
@@ -18,6 +19,7 @@ import { RolService } from './rol.service';
 import { OperacionService } from './operacion.service';
 import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
 import { EstadosEntidades } from 'src/entities/estadosEntidades';
+import { Cliente } from 'src/entities/cliente.entity';
 
 dotenv.config();
 
@@ -64,6 +66,29 @@ export class UsuarioService {
     });
   }
 
+  async findUsuarioByEmailAndCliente(
+    email: string,
+    cliente: Cliente,
+    manager?: EntityManager,
+  ): Promise<Usuario | null> {
+    const repo = this.getRepository(manager);
+    return repo.findOne({
+      where: { correo: email, cliente },
+      relations: ['roles', 'cliente'],
+    });
+  }
+
+  async saveUsuario(
+    user: Usuario,
+    manager?: EntityManager,
+  ): Promise<Usuario>{
+    const repo = this.getRepository(manager);
+
+    const save = repo.save(user);
+
+    return save;
+  }
+
   async getUsuariosClientes(
     idCliente: string,
     manager?: EntityManager,
@@ -92,14 +117,14 @@ export class UsuarioService {
     idCliente: string,
   ): Promise<Usuario> {
     // Verificar que el cliente exista
-    const cliente = await this.clienteService.findClienteById(idCliente);
-    if (!cliente) {
+    const clienteUsuario = await this.clienteService.findClienteById(idCliente);
+    if (!clienteUsuario) {
       throw new NotFoundException('Client not found');
     }
 
-    // verificar si el correo ya está registrado
+    // verificar si el correo ya está registrado en ese cliente
     const existingUser = await this.usuarioRepository.findOne({
-      where: { correo: usuarioDTO.correo },
+      where: { correo: usuarioDTO.correo, cliente: clienteUsuario},
     });
     if (existingUser) {
       throw new ConflictException('Email already registered');
@@ -138,7 +163,7 @@ export class UsuarioService {
       parametros: usuarioDTO.parametros,
       estado: EstadosEntidades.ALTA,
       verificado: false,
-      cliente,
+      cliente: clienteUsuario,
       roles,
     });
 
@@ -402,5 +427,52 @@ export class UsuarioService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async solicitudCambioContraseña(usuario: Usuario, token: string): Promise<void>{
+    const hashToken = await this.hashPassword(token);
+
+    usuario.recuperacionTokenHash = hashToken;
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try{
+      const repoUsuario = this.getRepository(queryRunner.manager)
+
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.CAMBIAR_CONTRASENA,
+        },
+        queryRunner.manager,
+      );
+
+      repoUsuario.save(usuario);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+
+      throw new InternalServerErrorException('Could not update user');
+    } finally {
+      await queryRunner.release();
+    }
+  }
+  
+  async verifySolicitudCambio(idUsuario: string, token: string): Promise<Usuario>{
+    const usuario = await this.findUsuarioById(idUsuario);
+
+    if(!usuario){
+      throw new NotFoundException("No se encontro el usaurio de la solicitud");
+    }
+
+    const tokenHash = await this.hashPassword(token);
+
+    if(usuario.recuperacionTokenHash != tokenHash){
+      throw new UnauthorizedException("El token proporcionado no es valido")
+    }
+
+    return usuario;
   }
 }

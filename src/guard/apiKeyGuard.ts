@@ -29,7 +29,8 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     request.idCliente = clienteValido.idCliente;
-
+    request.cliente = clienteValido;
+    
     return true;
   }
 }

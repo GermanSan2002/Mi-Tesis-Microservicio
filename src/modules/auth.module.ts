@@ -8,9 +8,10 @@ import { Sesion } from 'src/entities/sesion.entity';
 import { SesionModule } from './sesion.module';
 import { OperacionModule } from './operacion.module';
 import { UsuarioModule } from './usuario.module';
+import { ClienteModule } from './cliente.module';
 
 @Module({
-  imports: [TokenModule, SesionModule, OperacionModule, UsuarioModule],
+  imports: [TokenModule, SesionModule, OperacionModule, UsuarioModule, ClienteModule],
   providers: [AuthService],
   controllers: [AuthController],
   exports: [AuthService],

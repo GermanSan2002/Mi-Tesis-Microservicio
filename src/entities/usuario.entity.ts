@@ -7,6 +7,7 @@ import {
   ManyToMany,
   JoinTable,
   Index,
+  JoinColumn,
 } from 'typeorm';
 import { Cliente } from './cliente.entity';
 import { TipoUsuario } from './tipo-usuario.enum';
@@ -17,10 +18,14 @@ import { EstadosEntidades } from './estadosEntidades';
 
 @Entity('usuarios')
 @Index(['correo'])
+@Index(['correo', 'idCliente'], { unique: true })
 export class Usuario {
   @PrimaryGeneratedColumn('uuid')
   idUsuario: string;
 
+  @Column({ nullable: false })
+  idCliente: string;
+  
   @Column()
   contraseña: string;
 
@@ -42,7 +47,11 @@ export class Usuario {
   @Column({ type: 'int', default: 0 })
   intentosFallidosLogin: number;
 
+  @Column({nullable: true})
+  recuperacionTokenHash: string
+
   @ManyToOne(() => Cliente, (cliente) => cliente.usuarios)
+  @JoinColumn({name: 'idCliente'})
   cliente: Cliente;
 
   @OneToMany(() => Sesion, (sesion) => sesion.usuario)

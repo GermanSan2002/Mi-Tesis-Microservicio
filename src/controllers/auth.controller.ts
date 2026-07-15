@@ -1,13 +1,19 @@
 import {
   Body,
   Controller,
+  HttpCode,
+  HttpStatus,
+  Patch,
   Post,
+  Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
   ApiBody,
+  ApiHeader,
   ApiOperation,
   ApiProperty,
   ApiResponse,
@@ -18,6 +24,9 @@ import { AuthService } from 'src/services/auth.service';
 import { TokenService } from 'src/services/token.service';
 import { CredentialsDTO } from 'src/dto/credentialsDTO';
 import { LogoutDTO } from 'src/dto/logoutDTO';
+import { CambiarContraseñaDTO, RecuperarContraseñaSolicitudDTO } from 'src/dto/recuperarContraseñaDTO';
+import { ApiKeyGuard } from 'src/guard/apiKeyGuard';
+import { RecuperarPassGuard } from 'src/guard/recuperarPass.guard';
 
 class HashDTO {
   @ApiProperty({
@@ -115,7 +124,7 @@ export class AuthController {
   })
   async checkAuth(@Body('token') token: string) {
     try {
-      const decoded = await this.tokenService.verifyToken(token);
+      const decoded = await this.tokenService.verifyAccessToken(token);
       return decoded;
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
@@ -150,4 +159,61 @@ export class AuthController {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
+
+  @Patch('/solitarRecuperacion')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ApiKeyGuard)
+  @ApiOperation({ 
+    summary: 'Generar el hash de una contraseña', 
+    description: 'Genera un token de solicitud de cambio de contraseña'
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario verificado exitosamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El usuario no pertenece al cliente especificado.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'No existe el usuario a recuperar.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'El usuario ya se encuentra verificado.',
+  })
+  async solicitudCambioContraseña(@Req() req: any, @Body() recuperarDTO: RecuperarContraseñaSolicitudDTO){
+    const cliente = req.cliente;
+
+    return await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente);
+  }
+
+  @Patch('/confirmarRecuperacion')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ApiKeyGuard, RecuperarPassGuard)
+  @ApiOperation({ 
+    summary: 'Confirma el cambio de una contraseña', 
+    description: 'Valida un token de solicitud de cambio de contraseña. Se cambia la contraseña de un usuario'
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente para identificarse',
+    required: true,
+  })
+  @ApiHeader({
+    name: 'X-Token-Recover',
+    description: 'Clave secreta proporcionada al cliente para el cambio de contraseña',
+    required: true,
+  })
+  async confirmarCambioContraseña(@Req() req: any, @Body() cambioDTO: CambiarContraseñaDTO){
+    const userid = req.usuarioId;
+
+    await this.authService.confirmarCambioContraseña(userid, cambioDTO);
+  };
 }

@@ -1,14 +1,13 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
-import { DataSource, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { TokenService } from './token.service';
-import { Usuario } from 'src/entities/usuario.entity';
 import { CredentialsDTO } from 'src/dto/credentialsDTO';
 import { SesionService } from './sesion.service';
 import { CreateSesionDTO } from 'src/dto/sesionDTO';
@@ -17,6 +16,9 @@ import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
 import { UsuarioService } from './usuario.service';
 import { EstadosSesion } from 'src/entities/estadosSesiones.enum';
 import { EstadosEntidades } from 'src/entities/estadosEntidades';
+import { CambiarContraseñaDTO, RecuperarContraseñaSolicitudDTO } from 'src/dto/recuperarContraseñaDTO';
+import { Cliente } from 'src/entities/cliente.entity';
+import { Usuario } from 'src/entities/usuario.entity';
 
 dotenv.config();
 
@@ -185,11 +187,69 @@ export class AuthService {
         },
         queryRunner.manager,
       );
+      // Si todo el circuito se completó con éxito, confirmamo los cambios físicos en la BD
+      await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
 
       throw error;
     } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async solicitarRecuperarContraseña(recuperarDTO: RecuperarContraseñaSolicitudDTO, cliente: Cliente): Promise<string>{
+    //Obtener usuario con correo
+    const usuarioRecuperar = await this.usuarioService.findUsuarioByEmailAndCliente(recuperarDTO.correo, cliente);
+
+    //Verificar que el usuario existe
+    if(!usuarioRecuperar){
+      throw new NotFoundException("No existe un usuario con ese correo")
+    }
+
+    //Obtener token de recuperacion de clave
+    const token = this.tokenService.generateRecuperarToken(usuarioRecuperar)
+
+    await this.usuarioService.solicitudCambioContraseña(usuarioRecuperar, token);
+
+    return token;
+  }
+
+  async confirmarCambioContraseña(userId: string, cambiarContraña: CambiarContraseñaDTO){
+    const user = await this.usuarioService.findUsuarioById(userId);
+    if(!user){
+      throw new NotFoundException("Usuario no encontrado");
+    }
+
+    const contraseñaHash = await this.hashPassword(cambiarContraña.contraseña);
+
+    user.contraseña = contraseñaHash
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try{
+      //Registro la operacion de cambio de contraseña
+      await this.operacionService.create(
+        {
+          idUsuario: user.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.CAMBIAR_CONTRASENA,
+          metadatos: {
+            cliente: user.idCliente,
+          },
+        },
+        queryRunner.manager,
+      );
+
+      await this.usuarioService.saveUsuario(user);
+      // Si todo el circuito se completó con éxito, confirmamo los cambios físicos en la BD
+      await queryRunner.commitTransaction();      
+    } catch(err) {
+      await queryRunner.rollbackTransaction();
+
+      throw err;      
+    } finally{
       await queryRunner.release();
     }
   }
