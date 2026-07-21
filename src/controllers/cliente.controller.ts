@@ -14,6 +14,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateClienteDto } from 'src/dto/clienteDTO';
+import { Cliente } from 'src/entities/cliente.entity';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { TipoUsuarioGuard } from 'src/guard/tipoUsuario.guard';
@@ -24,7 +25,7 @@ import { ClienteService } from 'src/services/cliente.service';
 export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 
-  @Post('registrar/admin')
+  @Post('registrar')
   @UseGuards(JwtAuthGuard, TipoUsuarioGuard)
   @SetMetadata('tipo', [TipoUsuario.SUPER_ADMINISTRADOR])
   @ApiBearerAuth()
@@ -57,4 +58,17 @@ export class ClienteController {
   async registrarCliente(@Body() clienteDTO: CreateClienteDto) {
     return this.clienteService.registrarCliente(clienteDTO);
   }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, TipoUsuarioGuard)
+  @SetMetadata('tipo', [TipoUsuario.SUPER_ADMINISTRADOR])
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Obtener lista de clientes',
+    description:
+      'Permite a un superadministrador obtener la lista de clientes registrados',
+  })
+  async getClientes(): Promise<Cliente[]>{
+    return await this.clienteService.findAll();    
+  }  
 }

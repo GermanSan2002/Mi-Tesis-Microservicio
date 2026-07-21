@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from 'src/entities/usuario.entity';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, ILike, In, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { CreateUsuarioDTO } from 'src/dto/usuarioDTO';
@@ -74,6 +74,18 @@ export class UsuarioService {
     const repo = this.getRepository(manager);
     return repo.findOne({
       where: { correo: email, cliente },
+      relations: ['roles', 'cliente'],
+    });
+  }
+
+  async findUsuarioByEmailPrefixAndCliente(
+    emailPrefix: string,
+    cliente: Cliente,
+    manager?: EntityManager,
+  ): Promise<Usuario[]> {
+    const repo = this.getRepository(manager);
+    return repo.find({
+      where: { correo: ILike(`${emailPrefix}`), cliente },
       relations: ['roles', 'cliente'],
     });
   }

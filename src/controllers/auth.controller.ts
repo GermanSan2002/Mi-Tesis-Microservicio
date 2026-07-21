@@ -215,5 +215,5 @@ export class AuthController {
     const userid = req.usuarioId;
 
     await this.authService.confirmarCambioContraseña(userid, cambioDTO);
-  };
+  };  
 }

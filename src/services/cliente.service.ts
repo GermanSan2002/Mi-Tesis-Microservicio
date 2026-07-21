@@ -22,6 +22,13 @@ export class ClienteService {
     return crypto.createHash('sha256').update(apiKey).digest('hex');
   }
 
+  async findAll(
+    manager?: EntityManager,
+  ){
+    const repo = this.getRepository(manager);
+    return await repo.find();
+  }
+
   async findClienteById(
     idCliente: string,
     manager?: EntityManager,
