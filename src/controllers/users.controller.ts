@@ -92,10 +92,12 @@ export class UsersController {
   async registerUserCliente(
     @Req() req: any,
     @Body() usuarioDTO: CreateUsuarioDTO,
-  ): Promise<Usuario> {
+    @Res() res: Response
+  ) {
     const idCliente = req.idCliente;
 
-    return await this.usuarioService.registerUserCliente(usuarioDTO, idCliente);
+    const respuesta = await this.usuarioService.registerUserCliente(usuarioDTO, idCliente);
+    return res.status(201).json(respuesta);
   }
 
   @Patch('/:idUsuario/verify')
@@ -136,10 +138,12 @@ export class UsersController {
   async verifyUserCliente(
     @Req() req: any,
     @Param('idUsuario') idUsuario: string,
-  ): Promise<void> {
+    @Res() res: Response
+  ) {
     const idCliente = req.idCliente;
 
-    return await this.usuarioService.verifyUserCliente(idCliente, idUsuario);
+    const respuesta = await this.usuarioService.verifyUserCliente(idCliente, idUsuario);
+    return res.status(200).json(respuesta);
   }
 
   @Get('/cliente')
@@ -175,10 +179,11 @@ export class UsersController {
     status: 404,
     description: 'Cliente no encontrado.',
   })
-  async getUsersClient(@Req() req: any): Promise<Usuario[]> {
+  async getUsersClient(@Req() req: any, @Res() res: Response) {
     const idCliente = req.idCliente;
 
-    return await this.usuarioService.getUsuariosClientes(idCliente);
+    const respuesta = await this.usuarioService.getUsuariosClientes(idCliente);
+    return res.status(200).json(respuesta);
   }
 
   @Patch('/:idUsuario/baja')
@@ -218,11 +223,13 @@ export class UsersController {
   async darBajaUsuario(
     @Req() req: any,
     @Param('idUsuario') idUsuario: string,
-    @Body() bajaDTO: BajaAltaDTO
+    @Body() bajaDTO: BajaAltaDTO,
+    @Res() res: Response
   ){
     const idCliente = req.idCliente;
 
-    return await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo);
+    const respuesta = await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo);
+    return res.status(200).json(respuesta);
   }
 
   @Patch('/:idUsuario/alta')
@@ -262,11 +269,13 @@ export class UsersController {
   async darAltaUsuario(
     @Req() req: any,
     @Param('idUsuario') idUsuario: string,
-    @Body() altaDTO: BajaAltaDTO
+    @Body() altaDTO: BajaAltaDTO,
+    @Res() res: Response
   ){
     const idCliente = req.idCliente;
 
-    return await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo);
+    const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo);
+    return res.status(200).json(respuesta);
   }
 
   @Get('/buscarMail')
@@ -305,10 +314,11 @@ export class UsersController {
     status: 404,
     description: 'Cliente no encontrado.',
   })
-  async buscarUsuarioMail(@Req() req: any, @Body() buscarMailDTO: BusquedaMailDTO): Promise<Usuario | null>{
+  async buscarUsuarioMail(@Req() req: any, @Body() buscarMailDTO: BusquedaMailDTO, @Res() res: Response){
     const cliente = req.cliente;
 
-    return await this.usuarioService.findUsuarioByEmailAndCliente(buscarMailDTO.mail, cliente);
+    const respuesta = await this.usuarioService.findUsuarioByEmailAndCliente(buscarMailDTO.mail, cliente);
+    return res.status(200).json(respuesta);
   }
 
   @Get('/buscar/mailParcial')
@@ -347,10 +357,12 @@ export class UsersController {
     status: 404,
     description: 'Cliente no encontrado.',
   })
-  async buscarUsuarioMailParcial(@Req() req: any, @Body() buscarMailDTO: BusquedaMailParcialDTO): Promise<Usuario[]>{
+  async buscarUsuarioMailParcial(@Req() req: any, @Body() buscarMailDTO: BusquedaMailParcialDTO, @Res() res: Response){
     const cliente = req.cliente;
 
-    return await this.usuarioService.findUsuarioByEmailPrefixAndCliente(buscarMailDTO.mailParcial, cliente);
+    const respuesta = await this.usuarioService.findUsuarioByEmailPrefixAndCliente(buscarMailDTO.mailParcial, cliente);
+
+    return res.status(200).json(respuesta);
   }
 
   @Get('/:idUsuario')

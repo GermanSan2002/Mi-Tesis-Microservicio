@@ -3,9 +3,11 @@ import {
   Controller,
   Get,
   Post,
+  Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -14,7 +16,6 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateClienteDto } from 'src/dto/clienteDTO';
-import { Cliente } from 'src/entities/cliente.entity';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { TipoUsuarioGuard } from 'src/guard/tipoUsuario.guard';
@@ -55,11 +56,12 @@ export class ClienteController {
     description:
       'Petición incorrecta. Los datos del DTO fallaron en las validaciones de estructura o tipos.',
   })
-  async registrarCliente(@Body() clienteDTO: CreateClienteDto) {
-    return this.clienteService.registrarCliente(clienteDTO);
+  async registrarCliente(@Body() clienteDTO: CreateClienteDto, @Res() res: Response) {
+    const respuesta = await this.clienteService.registrarCliente(clienteDTO);
+    return res.status(201).json(respuesta);
   }
 
-  @Get()
+  @Get('all')
   @UseGuards(JwtAuthGuard, TipoUsuarioGuard)
   @SetMetadata('tipo', [TipoUsuario.SUPER_ADMINISTRADOR])
   @ApiBearerAuth()
@@ -68,7 +70,9 @@ export class ClienteController {
     description:
       'Permite a un superadministrador obtener la lista de clientes registrados',
   })
-  async getClientes(): Promise<Cliente[]>{
-    return await this.clienteService.findAll();    
-  }  
+  async getClientes(@Res() res: Response) {
+    const respuesta = await this.clienteService.findAll();
+    
+    return res.status(200).json(respuesta);
+  }
 }

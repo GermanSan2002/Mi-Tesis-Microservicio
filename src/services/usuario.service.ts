@@ -119,8 +119,79 @@ export class UsuarioService {
     updateUsuario: ModifyUsuarioDTO
   ){
     const existingUser = await this.findUsuarioClientById(idUsuario, cliente.idCliente)
-    if (existingUser) {
+    if (!existingUser) {
       throw new ConflictException('Email already registered');
+    }
+
+    updateUsuario.contraseña = await this.hashPassword(updateUsuario.contraseña);
+
+    existingUser.correo = updateUsuario.correo;
+    existingUser.contraseña = updateUsuario.contraseña;
+    existingUser.estado = updateUsuario.estado;
+    existingUser.parametros = updateUsuario.parametros;
+    existingUser.tipo = updateUsuario.tipo;
+    existingUser.verificado = updateUsuario.verificado || existingUser.verificado;
+
+    // Obtener y validar los roles del cliente
+    let roles: Rol[] = [];
+
+    if(updateUsuario.roles && updateUsuario.roles.length > 0){
+      roles = await this.rolService.findRolesByClienteId(cliente.idCliente);
+
+      const rolesIdsCliente = new Set(roles.map((rol) => rol.idRol));
+
+      const invalidRoles = updateUsuario.roles.filter(
+        (idRol) => !rolesIdsCliente.has(idRol),
+      );
+
+      if (invalidRoles.length > 0) {
+        throw new BadRequestException(
+          `The following roles do not belong to the client: ${invalidRoles.join(', ')}`,
+        );
+      }
+
+      // Conservar únicamente los roles solicitados
+      roles = roles.filter((rol) => updateUsuario.roles!.includes(rol.idRol));
+      existingUser.roles = roles;
+    }
+
+    // Ejecutar Guardado y Auditoría en una Transacción Atómica
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      //  Guardar el usuario usando el manager de la transacción
+      const usuario = await queryRunner.manager.save(Usuario, existingUser);
+
+      // Registrar la auditoría pasándole el manager de la transacción activa
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          fechaRealizacion: new Date(),
+          tipo: TipoOperacion.ACTUALIZAR_USUARIO,
+        },
+        queryRunner.manager,
+      );
+
+      // Se impacta la base de datos definitivamente
+      await queryRunner.commitTransaction();
+      return usuario;
+    } catch (err) {
+      // Si algo falla, el rollback deshace el usuario y la operación
+      await queryRunner.rollbackTransaction();
+
+      if (
+        err instanceof NotFoundException ||
+        err instanceof ConflictException ||
+        err instanceof BadRequestException
+      ) {
+        throw err;
+      }
+
+      throw new InternalServerErrorException('Could not register user');
+    } finally {
+      await queryRunner.release();
     }
   }
 
