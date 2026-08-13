@@ -115,3 +115,16 @@ export class ModifyUsuarioDTO {
   @IsString({ each: true })
   roles?: string[];
 }
+
+export class ModifyUsuarioPerfilDTO{
+  @ApiPropertyOptional({
+    example: {
+      telefono: '1122334455',
+      cargo: 'Administrador',
+    },
+    description: 'Parámetros adicionales del usuario',
+  })
+  @IsOptional()
+  @IsObject()
+  parametros?: any;
+}

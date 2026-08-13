@@ -11,7 +11,7 @@ import { Usuario } from 'src/entities/usuario.entity';
 import { DataSource, EntityManager, ILike, In, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
-import { CreateUsuarioDTO } from 'src/dto/usuarioDTO';
+import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
 import { ClienteService } from './cliente.service';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 import { Rol } from 'src/entities/rol.entity';
@@ -51,6 +51,18 @@ export class UsuarioService {
     const repo = this.getRepository(manager);
     return repo.findOne({
       where: { idUsuario },
+      relations: ['roles', 'cliente'],
+    });
+  }
+
+  async findUsuarioClientById(
+    idUsuario: string,
+    idCliente: string,
+    manager?: EntityManager,
+  ): Promise<Usuario | null> {
+    const repo = this.getRepository(manager);
+    return repo.findOne({
+      where: { idUsuario, idCliente },
       relations: ['roles', 'cliente'],
     });
   }
@@ -99,6 +111,17 @@ export class UsuarioService {
     const save = repo.save(user);
 
     return save;
+  }
+
+  async updateUsuario(
+    idUsuario: string,
+    cliente: Cliente,
+    updateUsuario: ModifyUsuarioDTO
+  ){
+    const existingUser = await this.findUsuarioClientById(idUsuario, cliente.idCliente)
+    if (existingUser) {
+      throw new ConflictException('Email already registered');
+    }
   }
 
   async getUsuariosClientes(

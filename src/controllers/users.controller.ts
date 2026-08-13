@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
@@ -22,8 +23,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { IsEmail, IsString } from 'class-validator';
+import type { Response } from 'express';
 import { BajaAltaDTO } from 'src/dto/bajaDTO';
-import { CreateUsuarioDTO } from 'src/dto/usuarioDTO';
+import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
 import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 import { Usuario } from 'src/entities/usuario.entity';
 import { ApiKeyGuard } from 'src/guard/apiKeyGuard';
@@ -349,5 +351,61 @@ export class UsersController {
     const cliente = req.cliente;
 
     return await this.usuarioService.findUsuarioByEmailPrefixAndCliente(buscarMailDTO.mailParcial, cliente);
+  }
+
+  @Get('/:idUsuario')
+  @UseGuards(JwtAuthGuard, TipoUsuarioGuard, ApiKeyGuard)
+  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Obtener un usuario por id',
+    description:
+      'Permite a un usuario administrador de un cliente buscar un usuario por ID',
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  async getUsuario(
+    @Req() req: any,
+    @Param('idUsuario') idUsuario: string,
+    @Res() res: Response
+  ){
+    const idCliente = req.idCliente;
+
+    const user = await this.usuarioService.findUsuarioClientById(idUsuario, idCliente);
+
+    return res.status(200).json(user);
+  }
+
+  @Patch('/update/:idUsuario')
+  @UseGuards(JwtAuthGuard, ApiKeyGuard)
+  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Actualizar usuario',
+    description:
+      'Permite a un usuario administrador de un cliente actualizar los datos de un usuario',
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  @ApiBody({
+    type: ModifyUsuarioDTO
+  })
+  async updateUsuario(
+    @Req() req: any,
+    @Param('idUsuario') idUsuario: string,
+    @Body() updateUsuario: ModifyUsuarioDTO,
+    @Res() res: Response
+  ){
+    const idCliente = req.idCliente;
+
+    const respuesta = await this.usuarioService.updateUsuario(idUsuario, idCliente, updateUsuario);
+
+    return res.status(200).json(respuesta);
   }
 }

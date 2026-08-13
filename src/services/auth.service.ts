@@ -220,10 +220,14 @@ export class AuthService {
     if(!user){
       throw new NotFoundException("Usuario no encontrado");
     }
+    if(!user.verificado){
+      throw new ConflictException("Usuario no verificado")
+    }
 
     const contraseñaHash = await this.hashPassword(cambiarContraña.contraseña);
 
     user.contraseña = contraseñaHash
+    user.estado = EstadosEntidades.ALTA
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

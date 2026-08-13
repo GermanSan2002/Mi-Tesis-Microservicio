@@ -194,6 +194,26 @@ export class AuthController {
     return await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente);
   }
 
+  @Post('/validarCambioPass')
+  @UseGuards(ApiKeyGuard, RecuperarPassGuard)
+  @ApiOperation({ 
+    summary: 'Validar solicitud de cambio de contraeña', 
+    description: 'Valida un token de solicitud de cambio de contraseña.'
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente para identificarse',
+    required: true,
+  })
+  @ApiHeader({
+    name: 'X-Token-Recover',
+    description: 'Clave secreta proporcionada al cliente para el cambio de contraseña',
+    required: true,
+  })
+  async validarCambioContraseña(@Res() res: Response){
+    return res.status(200);
+  }
+
   @Patch('/confirmarRecuperacion')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ApiKeyGuard, RecuperarPassGuard)
