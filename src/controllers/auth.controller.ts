@@ -74,17 +74,17 @@ export class AuthController {
   @ApiOperation({ summary: 'Iniciar sesión del usuario' })
   @ApiBody({ type: CredentialsDTO })
   @ApiResponse({ status: 200, description: 'Login successful, token returned' })
-  @ApiResponse({ status: 400, description: 'Invalid credentials' })
-  async login(@Body() credentialsDTO: CredentialsDTO, @Res() res: Response) {
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async login(@Req() req: any, @Body() credentialsDTO: CredentialsDTO, @Res() res: Response) {
     try {
       const { accessToken, refreshToken } =
-        await this.authService.login(credentialsDTO);
+        await this.authService.login(credentialsDTO, req);
       res.status(200).json({ accessToken, refreshToken });
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        res.status(400).json({ message: error.message });
+      if (error instanceof UnauthorizedException) {
+        res.status(401).json({ message: error.message });
       } else {
-        res.status(400).json({ message: 'Unknown error occurred' });
+        res.status(404).json({ message: 'Unknown error occurred' });
       }
     }
   }
@@ -100,12 +100,18 @@ export class AuthController {
     status: 401,
     description: 'Refresh Token inválido o sesión no válida',
   })
-  async logout(@Body() logoutDTO: LogoutDTO) {
-    await this.authService.logout(logoutDTO.refreshToken);
-
-    return {
-      message: 'Logout successful',
-    };
+  async logout(@Req() req: any, @Body() logoutDTO: LogoutDTO, @Res() res: Response) {
+    try {
+      await this.authService.logout(logoutDTO.refreshToken, req);
+      res.status(200).json({ message: 'Logout successful' });
+    }
+    catch (error) {
+      if (error instanceof UnauthorizedException) {
+        res.status(401).json({ message: error.message });
+      } else {
+        res.status(404).json({ message: 'Unknown error occurred' });
+      }
+    }
   }
 
   @Post('checkAuth')
@@ -117,17 +123,20 @@ export class AuthController {
     description: 'Token decodificado correctamente',
     schema: { example: { decoded: { userId: '12345' } } },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o expirado' })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Token inválido o expirado' 
+  })
   @ApiBody({
     description: 'Token JWT a decodificar',
     schema: { example: { token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } },
   })
-  async checkAuth(@Body('token') token: string) {
+  async checkAuth(@Req() req: any, @Body('token') token: string, @Res() res: Response) {
     try {
       const decoded = await this.tokenService.verifyAccessToken(token);
-      return decoded;
+      res.status(200).json({ decoded });
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired token');
+      res.status(401).json({ message: 'Invalid or expired token' });
     }
   }
 
@@ -150,13 +159,13 @@ export class AuthController {
       example: { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
     },
   })
-  async refreshAccessToken(@Body('refreshToken') refreshToken: string) {
+  async refreshAccessToken(@Req() req: any, @Body('refreshToken') refreshToken: string, @Res() res: Response) {
     try {
       const newAccessToken =
         await this.tokenService.refreshAccessToken(refreshToken);
-      return { accessToken: newAccessToken };
+      res.status(200).json({ accessToken: newAccessToken });
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      res.status(401).json({ message: 'Invalid or expired refresh token' });
     }
   }
 
@@ -188,10 +197,14 @@ export class AuthController {
     status: 409,
     description: 'El usuario ya se encuentra verificado.',
   })
-  async solicitudCambioContraseña(@Req() req: any, @Body() recuperarDTO: RecuperarContraseñaSolicitudDTO){
-    const cliente = req.cliente;
+  async solicitudCambioContraseña(@Req() req: any, @Body() recuperarDTO: RecuperarContraseñaSolicitudDTO, @Res() res: Response){
+    try {
+      const cliente = req.cliente;
 
-    return await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente);
+      return await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente, req);
+    } catch (error) {
+      res.status(400).json({ message: 'Error al solicitar recuperación de contraseña' });
+    }
   }
 
   @Post('/validarCambioPass')
@@ -231,9 +244,9 @@ export class AuthController {
     description: 'Clave secreta proporcionada al cliente para el cambio de contraseña',
     required: true,
   })
-  async confirmarCambioContraseña(@Req() req: any, @Body() cambioDTO: CambiarContraseñaDTO){
+  async confirmarCambioContraseña(@Req() req: any, @Body() cambioDTO: CambiarContraseñaDTO, res: Response){
     const userid = req.usuarioId;
 
-    await this.authService.confirmarCambioContraseña(userid, cambioDTO);
+    await this.authService.confirmarCambioContraseña(userid, cambioDTO, req);
   };  
 }

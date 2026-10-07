@@ -40,6 +40,11 @@ export class CreateOperacionDTO {
     example: 1,
     description: 'ID del usuario que realizó la operación',
   })
-  @IsInt()
   idUsuario: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del cliente que realizó la operación',
+  })
+  idCliente: string;
 }

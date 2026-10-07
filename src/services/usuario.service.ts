@@ -116,7 +116,8 @@ export class UsuarioService {
   async updateUsuario(
     idUsuario: string,
     cliente: Cliente,
-    updateUsuario: ModifyUsuarioDTO
+    updateUsuario: ModifyUsuarioDTO,
+    req: any
   ){
     const existingUser = await this.findUsuarioClientById(idUsuario, cliente.idCliente)
     if (!existingUser) {
@@ -155,6 +156,10 @@ export class UsuarioService {
       existingUser.roles = roles;
     }
 
+    // Obtener datos para la operacion de actualización de usuario
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     // Ejecutar Guardado y Auditoría en una Transacción Atómica
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -168,8 +173,13 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
+          idCliente: cliente.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.ACTUALIZAR_USUARIO,
+          metadatos: {
+            ipAddress: ipAddress,
+            userAgent: userAgent
+          },
         },
         queryRunner.manager,
       );
@@ -221,6 +231,7 @@ export class UsuarioService {
   async registerUserCliente(
     usuarioDTO: CreateUsuarioDTO,
     idCliente: string,
+    req: any
   ): Promise<Usuario> {
     // Verificar que el cliente exista
     const clienteUsuario = await this.clienteService.findClienteById(idCliente);
@@ -273,6 +284,10 @@ export class UsuarioService {
       roles,
     });
 
+    // Obtener datos para la operacion de creación de usuario
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     // Ejecutar Guardado y Auditoría en una Transacción Atómica
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -286,8 +301,13 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
+          idCliente: clienteUsuario.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.CREAR_USUARIO,
+          metadatos: {
+            ipAddress: ipAddress,
+            userAgent: userAgent
+          },
         },
         queryRunner.manager,
       );
@@ -313,7 +333,11 @@ export class UsuarioService {
     }
   }
 
-  async verifyUserCliente(idCliente: string, idUsuario: string): Promise<void> {
+  async verifyUserCliente(idCliente: string, idUsuario: string, req: any): Promise<void> {
+    // Obtener datos para la operacion de verificación de usuario
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -363,10 +387,13 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuarioVerificar.idUsuario,
+          idCliente: usuarioVerificar.cliente.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.VERIFICAR_USUARIO, // Asegúrate de tener este tipo en tu enum
           metadatos: {
             idClienteVerificador: idCliente,
+            ipAddress: ipAddress,
+            userAgent: userAgent
           },
         },
         queryRunner.manager,
@@ -394,7 +421,7 @@ export class UsuarioService {
     }
   }
 
-  async darAltaUsuario(idUsuario: string, idCliente: string, motivo?: string): Promise<void>{
+  async darAltaUsuario(idUsuario: string, idCliente: string, req: any, motivo?: string,): Promise<void>{
     const usuario = await this.findUsuarioById(idUsuario);
 
     if(!usuario){
@@ -406,6 +433,10 @@ export class UsuarioService {
     if(usuario.estado == EstadosEntidades.ALTA){
       throw new BadRequestException("Usuario ya dado de alta");
     }
+
+    // obtener datos para la operacion de dar de alta usuario
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -419,10 +450,13 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
+          idCliente: usuario.cliente.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.DAR_ALTA_USUARIO,
           metadatos: {
             motivo: motivo,
+            ipAddress: ipAddress,
+            userAgent: userAgent
           },
         },
         queryRunner.manager,
@@ -438,7 +472,7 @@ export class UsuarioService {
     }
   }
 
-  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string): Promise<void>{
+  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string, req: any): Promise<void>{
     const usuario = await this.findUsuarioById(idUsuario);
 
     if(!usuario){
@@ -463,6 +497,7 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
+          idCliente: usuario.cliente.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.DAR_BAJA_USUARIO, // Asegúrate de tener este tipo en tu enum
           metadatos: {
@@ -482,13 +517,17 @@ export class UsuarioService {
     }
   }
 
-  async registrarLoginFallido(usuario: Usuario): Promise<Usuario>{
+  async registrarLoginFallido(usuario: Usuario, req: any): Promise<Usuario>{
     usuario.intentosFallidosLogin++;
 
     if(usuario.intentosFallidosLogin>=3){
       usuario.estado = EstadosEntidades.BAJA;
       usuario.intentosFallidosLogin = 0;
     }
+
+    // Obtener datos para la operacion de inicio de sesión
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -500,10 +539,13 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
+          idCliente: usuario.cliente.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.INICIAR_SESION_FAIL, // Asegúrate de tener este tipo en tu enum
           metadatos: {
             motivo: 'Intentos de sesion fallidos consecutivos. Bloqueo de seguridad',
+            ipAddress: ipAddress,
+            userAgent: userAgent
           },
         },
         queryRunner.manager,
@@ -513,10 +555,13 @@ export class UsuarioService {
         await this.operacionService.create(
           {
             idUsuario: usuario.idUsuario,
+            idCliente: usuario.cliente.idCliente,
             fechaRealizacion: new Date(),
             tipo: TipoOperacion.DAR_BAJA_USUARIO,
             metadatos: {
               motivo: 'Intentos de sesion fallidos consecutivos. Bloqueo de seguridad',
+              ipAddress: ipAddress,
+              userAgent: userAgent
             },
           },
           queryRunner.manager
@@ -535,10 +580,14 @@ export class UsuarioService {
     }
   }
 
-  async solicitudCambioContraseña(usuario: Usuario, token: string): Promise<void>{
+  async solicitudCambioContraseña(usuario: Usuario, token: string, req: any): Promise<void>{
     const hashToken = await this.hashPassword(token);
 
     usuario.recuperacionTokenHash = hashToken;
+
+    // Obtener datos para la operacion de solicitud de cambio de contraseña
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -550,7 +599,12 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
+          idCliente: usuario.cliente.idCliente,
           fechaRealizacion: new Date(),
+          metadatos: {
+            ipAddress: ipAddress,
+            userAgent: userAgent
+          },
           tipo: TipoOperacion.CAMBIAR_CONTRASENA,
         },
         queryRunner.manager,

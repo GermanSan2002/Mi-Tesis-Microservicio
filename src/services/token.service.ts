@@ -23,6 +23,7 @@ export interface RecuperarContraseñaPayload {
 
 export interface RefreshTokenPayload {
   userId: string;
+  clientId: string;
   sesionId: string;
 }
 
@@ -80,8 +81,9 @@ export class TokenService {
    */
   generateRefreshToken(user: Usuario, sesionId: string): string {
     const userId = user.idUsuario;
+    const clientId = user.idCliente;
 
-    const payload: RefreshTokenPayload = { userId, sesionId };
+    const payload: RefreshTokenPayload = { userId, clientId, sesionId };
 
     return this.jwtService.sign(payload, {
       secret: process.env.REFRESH_TOKEN_SECRET || 'refresh-secret', // Secret alternativo si se prefiere separar

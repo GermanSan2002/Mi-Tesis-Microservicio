@@ -46,7 +46,7 @@ export class AuthService {
   }
 
   async login(
-    credentialsDTO: CredentialsDTO,
+    credentialsDTO: CredentialsDTO, req: any
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const { email, password } = credentialsDTO;
 
@@ -65,7 +65,7 @@ export class AuthService {
     );
     if (!isPasswordValid) {
       // Registrar la operación de inicio de sesión fallido
-      const usuarioFallido = await this.usuarioService.registrarLoginFallido(user);
+      const usuarioFallido = await this.usuarioService.registrarLoginFallido(user, req);
       
       if(user.estado = EstadosEntidades.BAJA){
         throw new UnauthorizedException('Invalid email or password. User blocked, recover password');  
@@ -77,6 +77,10 @@ export class AuthService {
     if (!user.verificado) {
       throw new UnauthorizedException('User not verified');
     }
+
+    // Obtener datos para la operacion de inicio de sesión
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
 
     // Iniciamos la transacción
     const queryRunner = this.dataSource.createQueryRunner();
@@ -100,9 +104,14 @@ export class AuthService {
       await this.operacionService.create(
         {
           idUsuario: user.idUsuario,
+          idCliente: user.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.INICIAR_SESION,
-          metadatos: { sesionId: sesion.idSesion },
+          metadatos: { 
+            sesionId: sesion.idSesion,
+            ipAddress: ipAddress,
+            userAgent: userAgent
+          },
         },
         queryRunner.manager,
       );
@@ -138,7 +147,11 @@ export class AuthService {
     }
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, req: any): Promise<void> {
+    // Obtener datos para la operacion de cierre de sesión
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -179,10 +192,13 @@ export class AuthService {
       await this.operacionService.create(
         {
           idUsuario: payload.userId,
+          idCliente: payload.clientId,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.CERRAR_SESION,
           metadatos: {
             sesionId: sesionId,
+            ipAddress: ipAddress,
+            userAgent: userAgent
           },
         },
         queryRunner.manager,
@@ -198,7 +214,7 @@ export class AuthService {
     }
   }
 
-  async solicitarRecuperarContraseña(recuperarDTO: RecuperarContraseñaSolicitudDTO, cliente: Cliente): Promise<string>{
+  async solicitarRecuperarContraseña(recuperarDTO: RecuperarContraseñaSolicitudDTO, cliente: Cliente, req: any): Promise<string>{
     //Obtener usuario con correo
     const usuarioRecuperar = await this.usuarioService.findUsuarioByEmailAndCliente(recuperarDTO.correo, cliente);
 
@@ -210,12 +226,12 @@ export class AuthService {
     //Obtener token de recuperacion de clave
     const token = this.tokenService.generateRecuperarToken(usuarioRecuperar)
 
-    await this.usuarioService.solicitudCambioContraseña(usuarioRecuperar, token);
+    await this.usuarioService.solicitudCambioContraseña(usuarioRecuperar, token, req);
 
     return token;
   }
 
-  async confirmarCambioContraseña(userId: string, cambiarContraña: CambiarContraseñaDTO){
+  async confirmarCambioContraseña(userId: string, cambiarContraña: CambiarContraseñaDTO, req: any): Promise<void>{
     const user = await this.usuarioService.findUsuarioById(userId);
     if(!user){
       throw new NotFoundException("Usuario no encontrado");
@@ -229,6 +245,10 @@ export class AuthService {
     user.contraseña = contraseñaHash
     user.estado = EstadosEntidades.ALTA
 
+    // Obtener datos para la operacion de cierre de sesión
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -237,10 +257,13 @@ export class AuthService {
       await this.operacionService.create(
         {
           idUsuario: user.idUsuario,
+          idCliente: user.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.CAMBIAR_CONTRASENA,
           metadatos: {
             cliente: user.idCliente,
+            ipAddress: ipAddress,
+            userAgent: userAgent
           },
         },
         queryRunner.manager,

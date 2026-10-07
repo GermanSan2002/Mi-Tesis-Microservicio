@@ -9,7 +9,6 @@ import {
   Post,
   Req,
   Res,
-  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -26,11 +25,8 @@ import { IsEmail, IsString } from 'class-validator';
 import type { Response } from 'express';
 import { BajaAltaDTO } from 'src/dto/bajaDTO';
 import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
-import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
 import { Usuario } from 'src/entities/usuario.entity';
 import { ApiKeyGuard } from 'src/guard/apiKeyGuard';
-import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { TipoUsuarioGuard } from 'src/guard/tipoUsuario.guard';
 import { UsuarioService } from 'src/services/usuario.service';
 
 class BusquedaMailDTO {
@@ -96,7 +92,7 @@ export class UsersController {
   ) {
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.registerUserCliente(usuarioDTO, idCliente);
+    const respuesta = await this.usuarioService.registerUserCliente(usuarioDTO, idCliente, req);
     return res.status(201).json(respuesta);
   }
 
@@ -142,15 +138,13 @@ export class UsersController {
   ) {
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.verifyUserCliente(idCliente, idUsuario);
+    const respuesta = await this.usuarioService.verifyUserCliente(idCliente, idUsuario, req);
     return res.status(200).json(respuesta);
   }
 
   @Get('/cliente')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TipoUsuarioGuard, ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
-  @ApiBearerAuth()
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({
     summary: 'Obtener usuarios de empresas',
     description:
@@ -188,13 +182,11 @@ export class UsersController {
 
   @Patch('/:idUsuario/baja')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TipoUsuarioGuard,ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
-  @ApiBearerAuth()
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({
     summary: 'Dar de baja usuario de un cliente',
     description:
-      'Permite a un usuario administrador de un cliente dar de baja un usuario registrado en su organizacion',
+      'Permite a un cliente dar de baja un usuario registrado en su organizacion',
   })
   @ApiHeader({
     name: 'X-API-Key',
@@ -228,19 +220,17 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo);
+    const respuesta = await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo, req);
     return res.status(200).json(respuesta);
   }
 
   @Patch('/:idUsuario/alta')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TipoUsuarioGuard,ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
-  @ApiBearerAuth()
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({
     summary: 'Dar de alta usuario de un cliente',
     description:
-      'Permite a un usuario administrador de un cliente dar de alta un usuario registrado en su organizacion dado de baja',
+      'Permite a un cliente dar de alta un usuario registrado en su organizacion dado de baja',
   })
   @ApiHeader({
     name: 'X-API-Key',
@@ -274,19 +264,17 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo);
+    const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo, req);
     return res.status(200).json(respuesta);
   }
 
   @Get('/buscarMail')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TipoUsuarioGuard, ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
-  @ApiBearerAuth()
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({
     summary: 'Obtener un usuario por correo',
     description:
-      'Permite a un usuario administrador de un cliente buscar un usuario especifico por mail',
+      'Permite a un cliente buscar un usuario especifico por mail',
   })
   @ApiHeader({
     name: 'X-API-Key',
@@ -323,13 +311,11 @@ export class UsersController {
 
   @Get('/buscar/mailParcial')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TipoUsuarioGuard, ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
-  @ApiBearerAuth()
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({
     summary: 'Obtener un usuario por correo',
     description:
-      'Permite a un usuario administrador de un cliente buscar una lista de usuarios segun coincidencia en el mail',
+      'Permite a un cliente buscar una lista de usuarios segun coincidencia en el mail',
   })
   @ApiHeader({
     name: 'X-API-Key',
@@ -366,13 +352,11 @@ export class UsersController {
   }
 
   @Get('/:idUsuario')
-  @UseGuards(JwtAuthGuard, TipoUsuarioGuard, ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
-  @ApiBearerAuth()
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({
     summary: 'Obtener un usuario por id',
     description:
-      'Permite a un usuario administrador de un cliente buscar un usuario por ID',
+      'Permite a un cliente buscar un usuario por ID',
   })
   @ApiHeader({
     name: 'X-API-Key',
@@ -392,13 +376,12 @@ export class UsersController {
   }
 
   @Patch('/update/:idUsuario')
-  @UseGuards(JwtAuthGuard, ApiKeyGuard)
-  @SetMetadata('tipo', [TipoUsuario.ADMINISTRADOR_CLIENTE])
+  @UseGuards(ApiKeyGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Actualizar usuario',
     description:
-      'Permite a un usuario administrador de un cliente actualizar los datos de un usuario',
+      'Permite a un cliente actualizar los datos de un usuario de su organizacion',
   })
   @ApiHeader({
     name: 'X-API-Key',
@@ -416,7 +399,7 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.updateUsuario(idUsuario, idCliente, updateUsuario);
+    const respuesta = await this.usuarioService.updateUsuario(idUsuario, idCliente, updateUsuario, req);
 
     return res.status(200).json(respuesta);
   }

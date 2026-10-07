@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   Index,
+  JoinColumn,
 } from 'typeorm';
 import { Usuario } from './usuario.entity';
 import { EstadosSesion } from './estadosSesiones.enum';
@@ -15,6 +16,9 @@ import { EstadosSesion } from './estadosSesiones.enum';
 export class Sesion {
   @PrimaryGeneratedColumn('uuid')
   idSesion: string;
+
+  @Column({ nullable: false })
+  idUsuario: string;
 
   @Column({ type: 'timestamp' })
   creadoEn: Date;
@@ -32,5 +36,6 @@ export class Sesion {
   ultimoUsoEn: Date;
 
   @ManyToOne(() => Usuario, (usuario) => usuario.sesiones)
+  @JoinColumn({ name: 'idUsuario' })
   usuario: Usuario;
 }

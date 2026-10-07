@@ -10,6 +10,7 @@ import { PlanesSuscripcion } from './planes-suscripcion.enum';
 import { Usuario } from './usuario.entity';
 import { Rol } from './rol.entity';
 import { EstadosEntidades } from './estadosEntidades';
+import { Operacion } from './operacion.entity';
 
 @Entity('clientes')
 export class Cliente {
@@ -33,6 +34,9 @@ export class Cliente {
 
   @OneToMany(() => Usuario, (usuario) => usuario.cliente)
   usuarios: Usuario[];
+
+  @OneToMany(() => Operacion, (operacion) => operacion.cliente)
+  operaciones: Operacion[];
 
   @OneToMany(() => Rol, (rol) => rol.cliente)
   roles: Rol[];
