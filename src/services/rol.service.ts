@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CreateRolDTO } from 'src/dto/rolDTO';
+import { EstadosEntidades } from 'src/entities/estadosEntidades';
 import { Rol } from 'src/entities/rol.entity';
 import { EntityManager, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class RolService {
   constructor(
     @InjectRepository(Rol)
     private readonly rolRepository: Repository<Rol>,
+    private readonly dataSource: DataSource,
   ) {}
 
   private getRepository(manager?: EntityManager): Repository<Rol> {
@@ -20,5 +24,36 @@ export class RolService {
   ): Promise<Rol[]> {
     const repo = this.getRepository(manager);
     return repo.find({ where: { cliente: { idCliente } } });
+  }
+
+  async getRolesByClienteId(
+    idCliente: string,
+    manager?: EntityManager,
+  ): Promise<Rol[]> {
+    const repo = this.getRepository(manager);
+    return repo.find({ where: { cliente: { idCliente } } });
+  }
+
+  async createRol(
+    rolData: CreateRolDTO,
+  ): Promise<Rol> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const newRol = this.rolRepository.create({
+        descripcion: rolData.descripcion,
+        nombre: rolData.nombre,
+        estado: EstadosEntidades.ALTA,
+      });
+      await queryRunner.commitTransaction();
+      return newRol;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

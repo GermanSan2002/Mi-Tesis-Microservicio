@@ -1,9 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
+  InternalServerErrorException,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -46,6 +49,15 @@ class BusquedaMailParcialDTO {
     })
   @IsString()
   mailParcial: string;
+}
+
+class RolesDTO {
+  @ApiProperty({
+      description: 'Lista de roles',
+      example: ['rol1', 'rol2']
+    })
+  @IsString({ each: true })
+  roles: string[];
 }
 
 @ApiTags('users')
@@ -140,6 +152,136 @@ export class UsersController {
 
     const respuesta = await this.usuarioService.verifyUserCliente(idCliente, idUsuario, req);
     return res.status(200).json(respuesta);
+  }
+
+  @Patch('/:idUsuario/asign-roles')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ApiKeyGuard)
+  @ApiOperation({
+    summary: 'Asignar roles a un usuario asociado a un cliente específico',
+    description:
+      'Permite asignar roles a un usuario, registrando la auditoría de forma transaccional.',
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  @ApiParam({
+    name: 'idUsuario',
+    description: 'ID del usuario a asignar roles',
+    type: String,
+    example: 'User_01',
+  })
+  @ApiBody({
+    description: 'Lista de roles a asignar',
+    type: RolesDTO,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Roles asignados exitosamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El usuario no pertenece al cliente especificado.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Cliente o Usuario no encontrado.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'El usuario ya se encuentra verificado.',
+  })
+  async asignRolesUsuario(
+    @Req() req: any,
+    @Param('idUsuario') idUsuario: string,
+    @Body() rolesDTO: RolesDTO,
+    @Res() res: Response
+  ) {
+    const idCliente = req.idCliente;
+
+    try {
+      const respuesta = await this.usuarioService.asignarRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+      return res.status(200).json(respuesta);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error instanceof BadRequestException) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error instanceof InternalServerErrorException) {
+        return res.status(500).json({ message: error.message });
+      } else {
+        return res.status(500).json({ message: 'Error assigning roles' });
+      }
+    }
+  }
+
+  @Patch('/:idUsuario/remove-roles')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ApiKeyGuard)
+  @ApiOperation({
+    summary: 'Remover roles de un usuario asociado a un cliente específico',
+    description:
+      'Permite remover roles de un usuario, registrando la auditoría de forma transaccional.',
+  })
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: true,
+  })
+  @ApiParam({
+    name: 'idUsuario',
+    description: 'ID del usuario a remover roles',
+    type: String,
+    example: 'User_01',
+  })
+  @ApiBody({
+    description: 'Lista de roles a remover',
+    type: RolesDTO,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Roles removidos exitosamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'El usuario no pertenece al cliente especificado.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Cliente o Usuario no encontrado.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor.',
+  })
+  async removerRolesUsuario(
+    @Req() req: any,
+    @Param('idUsuario') idUsuario: string,
+    @Body() rolesDTO: RolesDTO,
+    @Res() res: Response
+  ){
+    const idCliente = req.idCliente;
+
+    try {
+      const respuesta = await this.usuarioService.removerRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+      return res.status(200).json(respuesta);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error instanceof BadRequestException) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error instanceof InternalServerErrorException) {
+        return res.status(500).json({ message: error.message });
+      } else {
+        return res.status(500).json({ message: 'Error removing roles' });
+      }
+    }
   }
 
   @Get('/cliente')

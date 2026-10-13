@@ -28,7 +28,7 @@ export class Operacion {
   @JoinColumn({name: 'idUsuario'})
   usuario: Usuario;
 
-  @ManyToOne(() => Cliente, (cliente) => cliente.operaciones, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Cliente, (cliente) => cliente.operaciones, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({name: 'idCliente'})
   cliente: Cliente;
 }

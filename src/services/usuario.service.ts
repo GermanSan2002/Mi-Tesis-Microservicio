@@ -635,4 +635,121 @@ export class UsuarioService {
 
     return usuario;
   }
+
+  async asignarRolesUsuario(idUsuario: string, idCliente: string, roles: string[], req: any): Promise<Usuario> {
+    // Verificar que el usuario exista y pertenezca al cliente
+    if (!roles || roles.length === 0) {
+      throw new BadRequestException('No roles provided for assignment');
+    }
+    const usuario = await this.findUsuarioClientById(idUsuario, idCliente);
+    const rolesAsignados: Rol[] = [];
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado o no pertenece al cliente');
+    }
+    for (const idRol of roles) {
+      const rol = await this.rolService.findRolesByClienteId(idCliente);
+      const rolEncontrado = rol.find(r => r.idRol === idRol);
+      if (rolEncontrado) {
+        rolesAsignados.push(rolEncontrado);
+      } else {
+        throw new BadRequestException(`El rol con ID ${idRol} no pertenece al cliente`);
+      }
+    }
+
+    usuario.roles = rolesAsignados;
+
+    // Obtener datos para la operacion de asignación de roles
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const repoUsuario = this.getRepository(queryRunner.manager);
+
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          idCliente: usuario.cliente.idCliente,
+          fechaRealizacion: new Date(),
+          metadatos: {
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            rolesAsignados: rolesAsignados.map(r => r.idRol)
+          },
+          tipo: TipoOperacion.ASIGNAR_ROL,
+        },
+        queryRunner.manager,
+      );
+
+      await repoUsuario.save(usuario);
+      await queryRunner.commitTransaction();
+      return usuario;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException('Could not assign roles to user');
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async removerRolesUsuario(idUsuario: string, idCliente: string, roles: string[], req: any): Promise<Usuario> {
+    // Verificar que el usuario exista y pertenezca al cliente
+    if (!roles || roles.length === 0) {
+      throw new BadRequestException('No roles provided for removal');
+    }
+    const usuario = await this.findUsuarioClientById(idUsuario, idCliente);
+    const rolesARemover: Rol[] = [];
+
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado o no pertenece al cliente');
+    }
+    for (const idRol of roles) {
+      const rol = usuario.roles.find(r => r.idRol === idRol);
+      if (rol) {
+        rolesARemover.push(rol);
+      } else {
+        throw new BadRequestException(`El rol con ID ${idRol} no está asignado al usuario`);
+      }
+    }
+    
+    usuario.roles = usuario.roles.filter(r => !rolesARemover.includes(r));
+    
+    // Obtener datos para la operacion de asignación de roles
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const repoUsuario = this.getRepository(queryRunner.manager);
+      
+      await this.operacionService.create(
+        {
+          idUsuario: usuario.idUsuario,
+          idCliente: usuario.cliente.idCliente,
+          fechaRealizacion: new Date(),
+          metadatos: {
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            rolesRemovidos: rolesARemover.map(r => r.idRol)
+          },
+          tipo: TipoOperacion.REMOVER_ROL,
+        },
+        queryRunner.manager,
+      );
+      await repoUsuario.save(usuario);
+      await queryRunner.commitTransaction();
+      return usuario;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException('Could not remove roles from user');
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
