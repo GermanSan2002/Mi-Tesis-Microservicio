@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEnum,
-  IsInt,
   IsObject,
   IsOptional,
 } from 'class-validator';
