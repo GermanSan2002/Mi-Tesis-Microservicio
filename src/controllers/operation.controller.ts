@@ -1,32 +1,59 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
-import { ApiBody, ApiHeader, ApiOperation, ApiParam, ApiProperty, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { IsEnum, IsOptional } from "class-validator";
+import { ApiBody, ApiHeader, ApiOperation, ApiParam, ApiProperty, ApiPropertyOptional, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { IsDate, IsEnum, IsInt, IsOptional, Max, Min } from "class-validator";
 import { TipoOperacion } from "src/entities/tipo-operacion.enum";
 import { ApiKeyGuard } from "src/guard/apiKeyGuard";
 import { OperacionService } from "src/services/operacion.service";
 
-class PaginatedOperationQuery {
+export class PaginatedOperationQuery {
     @ApiProperty({
         description: 'Número de página para la paginación',
         example: 1,
     })
-    @IsOptional()
-    page?: number;
+    @IsInt()
+    @Min(1)
+    page: number = 1;
 
     @ApiProperty({
         description: 'Número de elementos por página',
         example: 10,
     })
-    @IsOptional()
-    limit?: number;
+    @IsInt()
+    @Min(10)
+    @Max(100)
+    limit: number = 10;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         enum: TipoOperacion,
         description: 'Tipo de operación para filtrar (opcional)',
     })
     @IsEnum(TipoOperacion)
     @IsOptional()
     tipo?: TipoOperacion;
+
+    @ApiPropertyOptional({
+        description: 'Fecha de realización de la operación para filtrar (opcional)',
+        example: '2026-07-02T15:30:00.000Z',
+    })
+    @IsOptional()
+    @IsDate()
+    fechaRealizacion?: Date;
+
+    @ApiPropertyOptional({
+        description: 'Fecha después de la cual filtrar las operaciones (opcional)',
+        example: '2026-07-02T15:30:00.000Z',
+    })
+    @IsOptional()
+    @IsDate()
+    despueDe?: Date;
+
+    @ApiPropertyOptional({
+        description: 'Fecha antes de la cual filtrar las operaciones (opcional)',
+        example: '2026-07-02T15:30:00.000Z',
+    })
+    @IsOptional()
+    @IsDate()
+    antesDe?: Date;
 }
 
 @ApiTags('operations')
@@ -81,9 +108,7 @@ export class OperationController {
         return await this.operacionService.getOperacionesByUsuarioId(
             idUsuario,
             idCliente,
-            query.page || 1,
-            query.limit || 10,
-            query.tipo,
+            query
         );
     }
 }

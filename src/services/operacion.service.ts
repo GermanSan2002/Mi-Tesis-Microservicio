@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { PaginatedOperationQuery } from 'src/controllers/operation.controller';
 import { CreateOperacionDTO } from 'src/dto/operacionDTO';
 import { Operacion } from 'src/entities/operacion.entity';
-import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
 import { Usuario } from 'src/entities/usuario.entity';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { EntityManager } from 'typeorm';
 
 export interface PaginatedResult<T> {
@@ -45,9 +45,7 @@ export class OperacionService {
   async getOperacionesByUsuarioId(
     idUsuario: string,
     clienteId: string,
-    page: number,
-    limit: number,
-    tipo?: TipoOperacion
+    query: PaginatedOperationQuery
   ): Promise<PaginatedResult<Operacion>> {
 
     const usuario = await this.usuarioRepository.findOne({
@@ -62,24 +60,34 @@ export class OperacionService {
       cliente: { idCliente: clienteId },
     };
 
-    if (tipo) {
-      whereConditions.tipo = tipo;
+    if (query.tipo) {
+      whereConditions.tipo = query.tipo;
+    }
+
+    if (query.fechaRealizacion) {
+      whereConditions.fechaRealizacion = query.fechaRealizacion;
+    } else if (query.despueDe && query.antesDe) {
+      whereConditions.fechaRealizacion = Between(query.despueDe, query.antesDe);
+    } else if (query.despueDe) {
+      whereConditions.fechaRealizacion = MoreThanOrEqual(query.despueDe);
+    } else if (query.antesDe) {
+      whereConditions.fechaRealizacion = LessThanOrEqual(query.antesDe);
     }
 
     const [data, total] = await this.operacionRepository.findAndCount({
       where: whereConditions,
       order: { fechaRealizacion: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
     });
 
     return {
       data,
       meta: {
         totalItems: total,
-        itemsPerPage: limit,
-        currentPage: page,
-        totalPages: Math.ceil(total / limit) || 1,
+        itemsPerPage: query.limit,
+        currentPage: query.page,
+        totalPages: Math.ceil(total / query.limit) || 1,
       },
     };
   }
