@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from 'src/entities/usuario.entity';
-import { DataSource, EntityManager, ILike, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, ILike, In, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
@@ -20,10 +20,21 @@ import { OperacionService } from './operacion.service';
 import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
 import { EstadosEntidades } from 'src/entities/estadosEntidades';
 import { Cliente } from 'src/entities/cliente.entity';
+import { PaginatedUsuarioQuery } from 'src/controllers/users.controller';
 
 dotenv.config();
 
 const saltRounds = parseInt(process.env.HASH_SALT_ROUNDS || '10', 10);
+
+export interface PaginatedUsuarioResult {
+  data: Usuario[];
+  meta: {
+    totalItems: number;
+    itemsPerPage: number;
+    currentPage: number;
+    totalPages: number;
+  }
+}
 
 @Injectable()
 export class UsuarioService {
@@ -207,25 +218,44 @@ export class UsuarioService {
 
   async getUsuariosClientes(
     idCliente: string,
+    query: PaginatedUsuarioQuery,
     manager?: EntityManager,
-  ): Promise<Usuario[]> {
+  ): Promise<PaginatedUsuarioResult> {
     // Obtener repositorio
     const repo = this.getRepository(manager);
 
-    // Verificar que el id proporcionado pertenezca a un cliente existente
-    const clienteBuscar = await this.clienteService.findClienteById(
-      idCliente,
-      manager,
-    );
-    if (!clienteBuscar) {
-      throw new NotFoundException('El cliente no existe');
+    const whereConditions: FindOptionsWhere<Usuario> = {
+      cliente: { idCliente: idCliente },
+    };
+
+    if(query.mail !== undefined) {
+      whereConditions.correo = query.mail;
+    } else if(query.mailParcial !== undefined) {
+      whereConditions.correo = ILike(`%${query.mailParcial}%`);
+    }
+    if(query.verified !== undefined) {
+      whereConditions.verificado = query.verified;
+    }
+    if(query.estado !== undefined) {
+      whereConditions.estado = query.estado;
     }
 
-    // Obtener lista de usuarios que pertenecen al cliente
-    return await repo.find({
-      where: { cliente: { idCliente } },
-      relations: ['roles', 'cliente'],
+    const [data, total] = await repo.findAndCount({
+      where: whereConditions,
+      order: { correo: 'DESC' },
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
     });
+
+    return {
+      data,
+      meta: {
+        totalItems: total,
+        itemsPerPage: query.limit,
+        currentPage: query.page,
+        totalPages: Math.ceil(total / query.limit) || 1,
+      },
+    };
   }
 
   async registerUserCliente(

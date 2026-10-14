@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -21,34 +22,65 @@ import {
   ApiOperation,
   ApiParam,
   ApiProperty,
+  ApiPropertyOptional,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsEmail, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsInt, IsString, Max, Min } from 'class-validator';
 import type { Response } from 'express';
 import { BajaAltaDTO } from 'src/dto/bajaDTO';
 import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
+import { EstadosEntidades } from 'src/entities/estadosEntidades';
 import { Usuario } from 'src/entities/usuario.entity';
 import { ApiKeyGuard } from 'src/guard/apiKeyGuard';
 import { UsuarioService } from 'src/services/usuario.service';
 
-class BusquedaMailDTO {
-  @ApiProperty({
-      description: 'Mail solicitado para la busqueda',
-      example: 'ejemplo@gmail.com'
+export class PaginatedUsuarioQuery {
+    @ApiProperty({
+        description: 'Número de página para la paginación',
+        example: 1,
     })
-  @IsString()
-  @IsEmail()
-  mail: string;
-}
+    @IsInt()
+    @Min(1)
+    page: number = 1;
 
-class BusquedaMailParcialDTO {
-  @ApiProperty({
-      description: 'Cadena para buscar por coincidencia de correo',
-      example: 'ejemplo'
+    @ApiProperty({
+        description: 'Número de elementos por página',
+        example: 10,
     })
-  @IsString()
-  mailParcial: string;
+    @IsInt()
+    @Min(10)
+    @Max(100)
+    limit: number = 10;
+
+    @ApiPropertyOptional({
+        description: 'Cadena para buscar por coincidencia de correo',
+        example: 'ejemplo'
+    })
+    @IsString()
+    mailParcial?: string;
+
+    @ApiPropertyOptional({
+        description: 'Mail solicitado para la busqueda',
+        example: 'ejemplo@gmail.com'
+    })
+    @IsEmail()
+    mail?: string;
+
+    @ApiPropertyOptional({
+        description: 'Estado de verificación del usuario',
+        example: true
+    })
+    @IsBoolean()
+    verified?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Estado del usuario',
+        example: EstadosEntidades.ALTA
+    })
+    @IsEnum(EstadosEntidades)
+    estado?: EstadosEntidades;
 }
 
 class RolesDTO {
@@ -297,28 +329,28 @@ export class UsersController {
     description: 'Clave secreta proporcionada al cliente',
     required: true,
   })
+  @ApiQuery({ name: 'page', required: true, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: true, type: Number, example: 10 })
+  @ApiQuery({ name: 'mailParcial', required: false, type: String, example: 'ejemplo' })
+  @ApiQuery({ name: 'mail', required: false, type: String, example: 'example@domain.com' })
+  @ApiQuery({ name: 'verified', required: false, type: Boolean, example: true })
+  @ApiQuery({ name: 'estado', required: false, enum: EstadosEntidades})
   @ApiResponse({
     status: 200,
     description: 'Lista de usuarios obtenida con exito',
   })
   @ApiResponse({
-    status: 401,
-    description:
-      'No autorizado. El token de acceso es inválido, expiró o no fue provisto en la cabecera.',
-  })
-  @ApiResponse({
-    status: 403,
-    description:
-      'Prohibido. El tipo de usuario logueado no posee los privilegios suficientes para ejecutar esta operación.',
-  })
-  @ApiResponse({
     status: 404,
     description: 'Cliente no encontrado.',
   })
-  async getUsersClient(@Req() req: any, @Res() res: Response) {
+  @ApiResponse({
+    status: 500,
+    description: 'Error interno del servidor.',
+  })
+  async getUsersClient(@Req() req: any, @Query() query: PaginatedUsuarioQuery, @Res() res: Response) {
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.getUsuariosClientes(idCliente);
+    const respuesta = await this.usuarioService.getUsuariosClientes(idCliente, query);
     return res.status(200).json(respuesta);
   }
 
@@ -407,89 +439,6 @@ export class UsersController {
     const idCliente = req.idCliente;
 
     const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo, req);
-    return res.status(200).json(respuesta);
-  }
-
-  @Get('/buscarMail')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(ApiKeyGuard)
-  @ApiOperation({
-    summary: 'Obtener un usuario por correo',
-    description:
-      'Permite a un cliente buscar un usuario especifico por mail',
-  })
-  @ApiHeader({
-    name: 'X-API-Key',
-    description: 'Clave secreta proporcionada al cliente',
-    required: true,
-  })
-  @ApiBody({
-    type: BusquedaMailDTO,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Usuario obtenido con exito',
-  })
-  @ApiResponse({
-    status: 401,
-    description:
-      'No autorizado. El token de acceso es inválido, expiró o no fue provisto en la cabecera.',
-  })
-  @ApiResponse({
-    status: 403,
-    description:
-      'Prohibido. El tipo de usuario logueado no posee los privilegios suficientes para ejecutar esta operación.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Cliente no encontrado.',
-  })
-  async buscarUsuarioMail(@Req() req: any, @Body() buscarMailDTO: BusquedaMailDTO, @Res() res: Response){
-    const cliente = req.cliente;
-
-    const respuesta = await this.usuarioService.findUsuarioByEmailAndCliente(buscarMailDTO.mail, cliente);
-    return res.status(200).json(respuesta);
-  }
-
-  @Get('/buscar/mailParcial')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(ApiKeyGuard)
-  @ApiOperation({
-    summary: 'Obtener un usuario por correo',
-    description:
-      'Permite a un cliente buscar una lista de usuarios segun coincidencia en el mail',
-  })
-  @ApiHeader({
-    name: 'X-API-Key',
-    description: 'Clave secreta proporcionada al cliente',
-    required: true,
-  })
-  @ApiBody({
-    type: BusquedaMailParcialDTO,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Usuario obtenido con exito',
-  })
-  @ApiResponse({
-    status: 401,
-    description:
-      'No autorizado. El token de acceso es inválido, expiró o no fue provisto en la cabecera.',
-  })
-  @ApiResponse({
-    status: 403,
-    description:
-      'Prohibido. El tipo de usuario logueado no posee los privilegios suficientes para ejecutar esta operación.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Cliente no encontrado.',
-  })
-  async buscarUsuarioMailParcial(@Req() req: any, @Body() buscarMailDTO: BusquedaMailParcialDTO, @Res() res: Response){
-    const cliente = req.cliente;
-
-    const respuesta = await this.usuarioService.findUsuarioByEmailPrefixAndCliente(buscarMailDTO.mailParcial, cliente);
-
     return res.status(200).json(respuesta);
   }
 

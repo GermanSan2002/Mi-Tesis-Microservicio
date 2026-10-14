@@ -82,10 +82,6 @@ export class OperationController {
     @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
     @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
     @ApiQuery({ name: 'tipo', required: false, enum: TipoOperacion })
-    @ApiBody({
-        description: 'Parámetros de paginación y filtro opcionales',
-        type: PaginatedOperationQuery,
-    })
     @ApiResponse({
         status: 200,
         description: 'Operaciones obtenidas exitosamente.',

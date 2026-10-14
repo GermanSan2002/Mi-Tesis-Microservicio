@@ -7,8 +7,8 @@ import { Usuario } from 'src/entities/usuario.entity';
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { EntityManager } from 'typeorm';
 
-export interface PaginatedResult<T> {
-  data: T[];
+export interface PaginatedOperationResult {
+  data: Operacion[];
   meta: {
     totalItems: number;
     itemsPerPage: number;
@@ -46,7 +46,7 @@ export class OperacionService {
     idUsuario: string,
     clienteId: string,
     query: PaginatedOperationQuery
-  ): Promise<PaginatedResult<Operacion>> {
+  ): Promise<PaginatedOperationResult> {
 
     const usuario = await this.usuarioRepository.findOne({
       where: { idUsuario, cliente: { idCliente: clienteId } }
