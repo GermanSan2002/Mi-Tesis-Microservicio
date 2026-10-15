@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateSesionDTO } from 'src/dto/sesionDTO';
-import { EstadosSesion } from 'src/entities/estadosSesiones.enum';
-import { Sesion } from 'src/entities/sesion.entity';
-import { Usuario } from 'src/entities/usuario.entity';
+import { CreateSesionDTO } from '../dto/sesionDTO';
+import { EstadosSesion } from '../entities/estadosSesiones.enum';
+import { Sesion } from '../entities/sesion.entity';
+import { Usuario } from '../entities/usuario.entity';
 import { DataSource, EntityManager, LessThan, Repository } from 'typeorm';
 
 @Injectable()

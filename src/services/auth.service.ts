@@ -8,17 +8,16 @@ import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import { TokenService } from './token.service';
-import { CredentialsDTO } from 'src/dto/credentialsDTO';
+import { CredentialsDTO } from '../dto/credentialsDTO';
 import { SesionService } from './sesion.service';
-import { CreateSesionDTO } from 'src/dto/sesionDTO';
+import { CreateSesionDTO } from '../dto/sesionDTO';
 import { OperacionService } from './operacion.service';
-import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
+import { TipoOperacion } from '../entities/tipo-operacion.enum';
 import { UsuarioService } from './usuario.service';
-import { EstadosSesion } from 'src/entities/estadosSesiones.enum';
-import { EstadosEntidades } from 'src/entities/estadosEntidades';
-import { CambiarContraseñaDTO, RecuperarContraseñaSolicitudDTO } from 'src/dto/recuperarContraseñaDTO';
-import { Cliente } from 'src/entities/cliente.entity';
-import { Usuario } from 'src/entities/usuario.entity';
+import { EstadosSesion } from '../entities/estadosSesiones.enum';
+import { EstadosEntidades } from '../entities/estadosEntidades';
+import { CambiarContraseñaDTO, RecuperarContraseñaSolicitudDTO } from '../dto/recuperarContraseñaDTO';
+import { Cliente } from '../entities/cliente.entity';
 
 dotenv.config();
 
@@ -58,6 +57,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // Comprobar que el usuario esta verificado o dado de baja
+    if (!user.verificado || user.estado === EstadosEntidades.BAJA) {
+      const usuarioFallido = await this.usuarioService.registrarLoginFallido(user, req);
+      throw new UnauthorizedException('User not verified or down');
+    }
+
     // Verificar la contraseña
     const isPasswordValid = await this.comparePassword(
       password,
@@ -67,15 +72,10 @@ export class AuthService {
       // Registrar la operación de inicio de sesión fallido
       const usuarioFallido = await this.usuarioService.registrarLoginFallido(user, req);
       
-      if(user.estado = EstadosEntidades.BAJA){
+      if(usuarioFallido.estado === EstadosEntidades.BAJA){
         throw new UnauthorizedException('Invalid email or password. User blocked, recover password');  
       }
       throw new UnauthorizedException('Invalid email or password');
-    }
-
-    // Comprobar que el usuario esta verificado
-    if (!user.verificado) {
-      throw new UnauthorizedException('User not verified');
     }
 
     // Obtener datos para la operacion de inicio de sesión

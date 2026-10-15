@@ -7,20 +7,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Usuario } from 'src/entities/usuario.entity';
+import { Usuario } from '../entities/usuario.entity';
 import { DataSource, EntityManager, FindOptionsWhere, ILike, In, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
-import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
+import { CreateUsuarioDTO, ModifyUsuarioDTO } from '../dto/usuarioDTO';
 import { ClienteService } from './cliente.service';
-import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
-import { Rol } from 'src/entities/rol.entity';
+import { TipoUsuario } from '../entities/tipo-usuario.enum';
+import { Rol } from '../entities/rol.entity';
 import { RolService } from './rol.service';
 import { OperacionService } from './operacion.service';
-import { TipoOperacion } from 'src/entities/tipo-operacion.enum';
-import { EstadosEntidades } from 'src/entities/estadosEntidades';
-import { Cliente } from 'src/entities/cliente.entity';
-import { PaginatedUsuarioQuery } from 'src/controllers/users.controller';
+import { TipoOperacion } from '../entities/tipo-operacion.enum';
+import { EstadosEntidades } from '../entities/estadosEntidades';
+import { Cliente } from '../entities/cliente.entity';
+import { PaginatedUsuarioQuery } from '../controllers/users.controller';
 
 dotenv.config();
 
@@ -548,9 +548,17 @@ export class UsuarioService {
   }
 
   async registrarLoginFallido(usuario: Usuario, req: any): Promise<Usuario>{
-    usuario.intentosFallidosLogin++;
+    let mensajeRegistro: string;
+    if(usuario.verificado){
+      mensajeRegistro = "Contraseña incorrecta";
+      usuario.intentosFallidosLogin++;
+    } else if (usuario.estado === EstadosEntidades.BAJA){
+      mensajeRegistro = "Usuario dado de baja";
+      usuario.intentosFallidosLogin++;
+    }
+    mensajeRegistro = "Usuario no verificado";
 
-    if(usuario.intentosFallidosLogin>=3){
+    if(usuario.intentosFallidosLogin>=3 && usuario.estado === EstadosEntidades.ALTA){
       usuario.estado = EstadosEntidades.BAJA;
       usuario.intentosFallidosLogin = 0;
     }
@@ -562,7 +570,7 @@ export class UsuarioService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    
+
     try{
       const repositorio = this.getRepository(queryRunner.manager);
 
@@ -571,9 +579,9 @@ export class UsuarioService {
           idUsuario: usuario.idUsuario,
           idCliente: usuario.cliente.idCliente,
           fechaRealizacion: new Date(),
-          tipo: TipoOperacion.INICIAR_SESION_FAIL, // Asegúrate de tener este tipo en tu enum
+          tipo: TipoOperacion.INICIAR_SESION_FAIL,
           metadatos: {
-            motivo: 'Intentos de sesion fallidos consecutivos. Bloqueo de seguridad',
+            motivo: mensajeRegistro,
             ipAddress: ipAddress,
             userAgent: userAgent
           },

@@ -1,10 +1,10 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Cliente } from 'src/entities/cliente.entity';
+import { Cliente } from '../entities/cliente.entity';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { CreateClienteDto } from 'src/dto/clienteDTO';
-import { EstadosEntidades } from 'src/entities/estadosEntidades';
+import { CreateClienteDto } from '../dto/clienteDTO';
+import { EstadosEntidades } from '../entities/estadosEntidades';
 
 @Injectable()
 export class ClienteService {

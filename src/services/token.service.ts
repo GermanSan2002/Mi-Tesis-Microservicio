@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as dotenv from 'dotenv';
-import { DataSource, Repository } from 'typeorm';
-import { Usuario } from 'src/entities/usuario.entity';
+import { DataSource } from 'typeorm';
+import { Usuario } from '../entities/usuario.entity';
 import { SesionService } from './sesion.service';
 import { UsuarioService } from './usuario.service';
-import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
+import { TipoUsuario } from '../entities/tipo-usuario.enum';
 
 export interface AccessTokenPayload {
   userId: string; // Basado en idUsuario de tu diagrama de clases

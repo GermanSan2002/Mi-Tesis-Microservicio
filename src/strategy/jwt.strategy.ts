@@ -30,8 +30,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
       return {
         userId: payload.userId,
-        idCliente: payload.idCliente, // Crucial para tu Tenant Isolation
-        tipo: payload.tipo, // Crucial para tu TipoUsuarioGuard
+        idCliente: payload.idCliente,
+        tipo: payload.tipo,
         sesionId: payload.sesionId,
         roles: payload.roles,
       };

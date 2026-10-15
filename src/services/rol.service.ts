@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateRolDTO } from 'src/dto/rolDTO';
-import { EstadosEntidades } from 'src/entities/estadosEntidades';
-import { Rol } from 'src/entities/rol.entity';
+import { CreateRolDTO } from '../dto/rolDTO';
+import { EstadosEntidades } from '../entities/estadosEntidades';
+import { Rol } from '../entities/rol.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { DataSource } from 'typeorm';
 

@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PaginatedOperationQuery } from 'src/controllers/operation.controller';
-import { CreateOperacionDTO } from 'src/dto/operacionDTO';
-import { Operacion } from 'src/entities/operacion.entity';
-import { Usuario } from 'src/entities/usuario.entity';
+import { PaginatedOperationQuery } from '../controllers/operation.controller';
+import { CreateOperacionDTO } from '../dto/operacionDTO';
+import { Operacion } from '../entities/operacion.entity';
+import { Usuario } from '../entities/usuario.entity';
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { EntityManager } from 'typeorm';
 
