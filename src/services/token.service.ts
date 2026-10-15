@@ -56,7 +56,7 @@ export class TokenService {
   generateAccessToken(user: Usuario, sesionId: string): string {
     // Mapeamos los nombres de los roles según el atributo del modelo ('nombre' o 'descripcion')
     const userId = user.idUsuario;
-    const idCliente = user.cliente.idCliente;
+    const idCliente = user.idCliente;
     const tipo = user.tipo;
     const roles = user.roles || [];
 
