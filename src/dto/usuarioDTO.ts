@@ -10,8 +10,8 @@ import {
   Length,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
-import { EstadosEntidades } from 'src/entities/estadosEntidades';
+import { TipoUsuario } from '../entities/tipo-usuario.enum';
+import { EstadosEntidades } from '../entities/estadosEntidades';
 
 export class CreateUsuarioDTO {
   @ApiProperty({
@@ -50,7 +50,7 @@ export class CreateUsuarioDTO {
 }
 
 export class ModifyUsuarioDTO {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'Password123!',
     description: 'Contraseña del usuario (se almacenará encriptada)',
   })

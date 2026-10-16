@@ -1,12 +1,9 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
-  InternalServerErrorException,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -29,12 +26,12 @@ import {
 } from '@nestjs/swagger';
 import { IsBoolean, IsEmail, IsEnum, IsInt, IsString, Max, Min } from 'class-validator';
 import type { Response } from 'express';
-import { BajaAltaDTO } from 'src/dto/bajaDTO';
-import { CreateUsuarioDTO, ModifyUsuarioDTO } from 'src/dto/usuarioDTO';
-import { EstadosEntidades } from 'src/entities/estadosEntidades';
-import { Usuario } from 'src/entities/usuario.entity';
-import { ApiKeyGuard } from 'src/guard/apiKeyGuard';
-import { UsuarioService } from 'src/services/usuario.service';
+import { BajaAltaDTO } from '../dto/bajaDTO';
+import { CreateUsuarioDTO, ModifyUsuarioDTO } from '../dto/usuarioDTO';
+import { EstadosEntidades } from '../entities/estadosEntidades';
+import { Usuario } from '../entities/usuario.entity';
+import { ApiKeyGuard } from '../guard/apiKeyGuard';
+import { UsuarioService } from '../services/usuario.service';
 
 export class PaginatedUsuarioQuery {
     @ApiProperty({
@@ -233,22 +230,8 @@ export class UsersController {
   ) {
     const idCliente = req.idCliente;
 
-    try {
-      const respuesta = await this.usuarioService.asignarRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
-      return res.status(200).json(respuesta);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        return res.status(404).json({ message: error.message });
-      }
-      if (error instanceof BadRequestException) {
-        return res.status(400).json({ message: error.message });
-      }
-      if (error instanceof InternalServerErrorException) {
-        return res.status(500).json({ message: error.message });
-      } else {
-        return res.status(500).json({ message: 'Error assigning roles' });
-      }
-    }
+    const respuesta = await this.usuarioService.asignarRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+    return res.status(200).json(respuesta);
   }
 
   @Patch('/:idUsuario/remove-roles')
@@ -298,22 +281,8 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    try {
-      const respuesta = await this.usuarioService.removerRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
-      return res.status(200).json(respuesta);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        return res.status(404).json({ message: error.message });
-      }
-      if (error instanceof BadRequestException) {
-        return res.status(400).json({ message: error.message });
-      }
-      if (error instanceof InternalServerErrorException) {
-        return res.status(500).json({ message: error.message });
-      } else {
-        return res.status(500).json({ message: 'Error removing roles' });
-      }
-    }
+    const respuesta = await this.usuarioService.removerRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+    return res.status(200).json(respuesta);
   }
 
   @Get('/cliente')
