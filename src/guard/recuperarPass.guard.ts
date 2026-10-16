@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
-import { TokenService } from "src/services/token.service";
-import { UsuarioService } from "src/services/usuario.service";
+import { TokenService } from "../services/token.service";
+import { UsuarioService } from "../services/usuario.service";
 
 @Injectable()
 export class RecuperarPassGuard implements CanActivate {

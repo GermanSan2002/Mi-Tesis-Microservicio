@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
+import { TipoUsuario } from '../entities/tipo-usuario.enum';
 
 @Injectable()
 export class TipoUsuarioGuard implements CanActivate {
