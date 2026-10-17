@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiHeader, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { CreateRolDTO } from "src/dto/rolDTO";
-import { ApiKeyGuard } from "src/guard/apiKeyGuard";
-import { RolService } from "src/services/rol.service";
+import { CreateRolDTO } from "../dto/rolDTO";
+import { ApiKeyGuard } from "../guard/apiKeyGuard";
+import { RolService } from "../services/rol.service";
 import type { Response } from 'express';
 
 @ApiTags('roles')
@@ -14,12 +14,8 @@ export class RolController {
     @UseGuards(ApiKeyGuard)
     async getRoles(@Req() req: any, @Res() res: Response) {
         const idCliente = req.idCliente;
-        try {
-            const roles = await this.rolService.getRolesByClienteId(idCliente);
-            return res.status(200).json(roles);
-        } catch (error) {
-            return res.status(500).json({ message: 'Error fetching roles' });
-        }
+        const roles = await this.rolService.getRolesByClienteId(idCliente);
+        return res.status(200).json(roles);
     }
 
     @Post('crear-rol')
@@ -40,11 +36,7 @@ export class RolController {
         @Res() res: Response
     ){
         const idCliente = req.idCliente;
-        try {
-            const newRol = await this.rolService.createRol(rolDTO);
-            return res.status(201).json(newRol);
-        } catch (error) {
-            return res.status(500).json({ message: 'Error creating role' });
-        }
+        const newRol = await this.rolService.createRol(rolDTO);
+        return res.status(201).json(newRol);
     }
 }

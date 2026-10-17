@@ -1,9 +1,9 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiBody, ApiHeader, ApiOperation, ApiParam, ApiProperty, ApiPropertyOptional, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { IsDate, IsEnum, IsInt, IsOptional, Max, Min } from "class-validator";
-import { TipoOperacion } from "src/entities/tipo-operacion.enum";
-import { ApiKeyGuard } from "src/guard/apiKeyGuard";
-import { OperacionService } from "src/services/operacion.service";
+import { TipoOperacion } from "../entities/tipo-operacion.enum";
+import { ApiKeyGuard } from "../guard/apiKeyGuard";
+import { OperacionService } from "../services/operacion.service";
 
 export class PaginatedOperationQuery {
     @ApiProperty({

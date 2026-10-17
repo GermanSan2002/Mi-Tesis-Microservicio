@@ -15,11 +15,11 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CreateClienteDto } from 'src/dto/clienteDTO';
-import { TipoUsuario } from 'src/entities/tipo-usuario.enum';
-import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { TipoUsuarioGuard } from 'src/guard/tipoUsuario.guard';
-import { ClienteService } from 'src/services/cliente.service';
+import { CreateClienteDto } from '../dto/clienteDTO';
+import { TipoUsuario } from '../entities/tipo-usuario.enum';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
+import { TipoUsuarioGuard } from '../guard/tipoUsuario.guard';
+import { ClienteService } from '../services/cliente.service';
 
 @ApiTags('client')
 @Controller('client')
