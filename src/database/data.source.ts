@@ -1,9 +1,9 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Cliente } from 'src/entities/cliente.entity';
-import { Operacion } from 'src/entities/operacion.entity';
-import { Rol } from 'src/entities/rol.entity';
-import { Sesion } from 'src/entities/sesion.entity';
-import { Usuario } from 'src/entities/usuario.entity';
+import { Cliente } from '../entities/cliente.entity';
+import { Operacion } from '../entities/operacion.entity';
+import { Rol } from '../entities/rol.entity';
+import { Sesion } from '../entities/sesion.entity';
+import { Usuario } from '../entities/usuario.entity';
 import { DataSource, DataSourceOptions } from 'typeorm';
 
 ConfigModule.forRoot({

@@ -35,8 +35,8 @@ export class RolController {
         @Body() rolDTO: CreateRolDTO,
         @Res() res: Response
     ){
-        const idCliente = req.idCliente;
-        const newRol = await this.rolService.createRol(rolDTO);
+        const cliente = req.cliente;
+        const newRol = await this.rolService.createRol(rolDTO, cliente);
         return res.status(201).json(newRol);
     }
 }

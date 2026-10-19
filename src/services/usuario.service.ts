@@ -265,6 +265,7 @@ export class UsuarioService {
   ): Promise<Usuario> {
     // Verificar que el cliente exista
     const clienteUsuario = await this.clienteService.findClienteById(idCliente);
+    console.log(clienteUsuario);
     if (!clienteUsuario) {
       throw new NotFoundException('Client not found');
     }
@@ -632,9 +633,9 @@ export class UsuarioService {
     await queryRunner.startTransaction();
     
     try{
-      const repoUsuario = this.getRepository(queryRunner.manager)
+      const repositorio = this.getRepository(queryRunner.manager);
 
-      await this.operacionService.create(
+      const operacion = await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
           idCliente: usuario.cliente.idCliente,
@@ -648,10 +649,13 @@ export class UsuarioService {
         queryRunner.manager,
       );
 
-      repoUsuario.save(usuario);
+      console.log("operacion de solicitud registrada");
+
+      await repositorio.save(usuario);
+      await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
-
+      console.log(err);
       throw new InternalServerErrorException('Could not update user');
     } finally {
       await queryRunner.release();

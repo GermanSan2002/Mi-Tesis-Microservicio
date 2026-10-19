@@ -159,6 +159,7 @@ describe('AuthController', () => {
     it('debe solicitar la recuperación de contraseña correctamente', async () => {
       const res = mockResponse();
       const recuperarDTO = { correo: 'test@mail.com' };
+      
       authService.solicitarRecuperarContraseña.mockResolvedValue('recovery_token' as any);
 
       const result = await controller.solicitudCambioContraseña(mockReq, recuperarDTO, res);
@@ -168,7 +169,8 @@ describe('AuthController', () => {
         mockReq.cliente,
         mockReq,
       );
-      expect(result).toBe('recovery_token');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ token: 'recovery_token' });
     });
   });
 

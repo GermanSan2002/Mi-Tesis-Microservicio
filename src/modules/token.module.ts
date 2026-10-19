@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TokenService } from 'src/services/token.service';
+import { TokenService } from '../services/token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { SesionModule } from './sesion.module';
 import { UsuarioModule } from './usuario.module';
 import { PassportModule } from '@nestjs/passport';
-import { JwtStrategy } from 'src/strategy/jwt.strategy';
+import { JwtStrategy } from '../strategy/jwt.strategy';
 
 @Module({
   imports: [

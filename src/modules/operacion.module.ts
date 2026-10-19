@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Usuario } from 'src/entities/usuario.entity';
-import { Operacion } from 'src/entities/operacion.entity';
-import { OperacionService } from 'src/services/operacion.service';
-import { OperationController } from 'src/controllers/operation.controller';
+import { Usuario } from '../entities/usuario.entity';
+import { Operacion } from '../entities/operacion.entity';
+import { OperacionService } from '../services/operacion.service';
+import { OperationController } from '../controllers/operation.controller';
 import { ClienteModule } from './cliente.module';
 
 @Module({

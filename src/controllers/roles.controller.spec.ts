@@ -6,6 +6,7 @@ import { ApiKeyGuard } from '../guard/apiKeyGuard';
 import { ExecutionContext } from '@nestjs/common';
 import { CreateRolDTO } from '../dto/rolDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
+import { Cliente } from '../entities/cliente.entity';
 
 describe('RolController', () => {
     let controller: RolController;
@@ -20,6 +21,7 @@ describe('RolController', () => {
 
     const mockReq = {
         idCliente: 'client-uuid-123',
+        cliente: {idCliente: 'client-uuid-123'} as Cliente,
         ip: '127.0.0.1',
         headers: { 'x-api-key': 'test-api-key' },
     };
@@ -89,7 +91,7 @@ describe('RolController', () => {
             const res = mockResponse();
             await controller.registerRol(mockReq, rolDTO, res);
 
-            expect(rolService.createRol).toHaveBeenCalledWith(rolDTO);
+            expect(rolService.createRol).toHaveBeenCalledWith(rolDTO, mockReq.cliente);
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.json).toHaveBeenCalledWith(expectedRol);
         });

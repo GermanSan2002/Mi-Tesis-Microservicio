@@ -5,6 +5,7 @@ import { EstadosEntidades } from '../entities/estadosEntidades';
 import { Rol } from '../entities/rol.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { DataSource } from 'typeorm';
+import { Cliente } from 'src/entities/cliente.entity';
 
 @Injectable()
 export class RolService {
@@ -36,6 +37,7 @@ export class RolService {
 
   async createRol(
     rolData: CreateRolDTO,
+    cliente: Cliente
   ): Promise<Rol> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -46,8 +48,15 @@ export class RolService {
         descripcion: rolData.descripcion,
         nombre: rolData.nombre,
         estado: EstadosEntidades.ALTA,
+        cliente: cliente,
       });
+
+      console.log(newRol);
+      console.log(cliente.idCliente);
+      
+      await this.rolRepository.save(newRol);
       await queryRunner.commitTransaction();
+      
       return newRol;
     } catch (error) {
       await queryRunner.rollbackTransaction();

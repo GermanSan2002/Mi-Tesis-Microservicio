@@ -69,7 +69,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Req() req: any, @Body() credentialsDTO: CredentialsDTO, @Res() res: Response) {
     const { accessToken, refreshToken } =
-      await this.authService.login(credentialsDTO, req);
+    await this.authService.login(credentialsDTO, req);
     res.status(200).json({ accessToken, refreshToken });
   }
 
@@ -77,7 +77,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Cerrar la sesión del usuario' })
   @ApiBody({ type: LogoutDTO })
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: 'Sesión cerrada correctamente',
   })
   @ApiResponse({
@@ -167,7 +167,9 @@ export class AuthController {
   async solicitudCambioContraseña(@Req() req: any, @Body() recuperarDTO: RecuperarContraseñaSolicitudDTO, @Res() res: Response) {
     const cliente = req.cliente;
 
-    return await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente, req);
+    const respuesta = await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente, req);
+
+    return res.status(200).json({"token": respuesta});
   }
 
   @Post('/validarCambioPass')

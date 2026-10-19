@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Usuario } from 'src/entities/usuario.entity';
-import { UsuarioService } from 'src/services/usuario.service';
+import { Usuario } from '../entities/usuario.entity';
+import { UsuarioService } from '../services/usuario.service';
 import { ClienteModule } from './cliente.module';
-import { Rol } from 'src/entities/rol.entity';
+import { Rol } from '../entities/rol.entity';
 import { RolModule } from './rol.module';
-import { UsersController } from 'src/controllers/users.controller';
+import { UsersController } from '../controllers/users.controller';
 import { OperacionModule } from './operacion.module';
 
 @Module({

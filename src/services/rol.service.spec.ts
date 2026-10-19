@@ -6,6 +6,8 @@ import { RolService } from './rol.service';
 import { Rol } from '../entities/rol.entity';
 import { CreateRolDTO } from '../dto/rolDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
+import { Cliente } from 'src/entities/cliente.entity';
+import { PlanesSuscripcion } from 'src/entities/planes-suscripcion.enum';
 
 describe('RolService', () => {
     let service: RolService;
@@ -15,11 +17,16 @@ describe('RolService', () => {
 
     const mockRol: Rol = {
         idRol: 'uuid-rol-1',
+        idCliente: 'uuid-cliente-1',
         nombre: 'Administrador',
         descripcion: 'Rol con privilegios totales',
         estado: EstadosEntidades.ALTA,
         cliente: {} as any,
     };
+
+    const mockCliente = {
+        idCliente: "uuid-cliente-1",
+    }
 
     beforeEach(async () => {
         // 1. Mock del QueryRunner y el manejador transaccional
@@ -112,6 +119,7 @@ describe('RolService', () => {
 
     describe('createRol', () => {
         it('debe crear y persistir un nuevo rol exitosamente bajo una transacción', async () => {
+            const cliente = mockCliente as Cliente;
             const createRolDto: CreateRolDTO = {
                 nombre: 'Supervisor',
                 descripcion: 'Rol de supervisión',
@@ -123,7 +131,7 @@ describe('RolService', () => {
                 descripcion: createRolDto.descripcion,
             });
 
-            const result = await service.createRol(createRolDto);
+            const result = await service.createRol(createRolDto, cliente);
 
             expect(dataSource.createQueryRunner).toHaveBeenCalled();
             expect(queryRunner.connect).toHaveBeenCalled();
@@ -132,6 +140,7 @@ describe('RolService', () => {
                 descripcion: createRolDto.descripcion,
                 nombre: createRolDto.nombre,
                 estado: EstadosEntidades.ALTA,
+                cliente
             });
             expect(queryRunner.commitTransaction).toHaveBeenCalled();
             expect(queryRunner.release).toHaveBeenCalled();
@@ -139,6 +148,7 @@ describe('RolService', () => {
         });
 
         it('debe hacer rollback y lanzar el error si ocurre una falla durante la creación', async () => {
+            const cliente = mockCliente as Cliente;
             const createRolDto: CreateRolDTO = {
                 nombre: 'Supervisor',
                 descripcion: 'Rol de supervisión',
@@ -149,7 +159,7 @@ describe('RolService', () => {
                 throw dbError;
             });
 
-            await expect(service.createRol(createRolDto)).rejects.toThrow(dbError);
+            await expect(service.createRol(createRolDto, cliente)).rejects.toThrow(dbError);
 
             expect(queryRunner.startTransaction).toHaveBeenCalled();
             expect(queryRunner.rollbackTransaction).toHaveBeenCalled();

@@ -1,10 +1,7 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Usuario } from 'src/entities/usuario.entity';
 import { TokenModule } from './token.module';
-import { AuthService } from 'src/services/auth.service';
-import { AuthController } from 'src/controllers/auth.controller';
-import { Sesion } from 'src/entities/sesion.entity';
+import { AuthService } from '../services/auth.service';
+import { AuthController } from '../controllers/auth.controller';
 import { SesionModule } from './sesion.module';
 import { OperacionModule } from './operacion.module';
 import { UsuarioModule } from './usuario.module';
