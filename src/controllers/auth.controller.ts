@@ -16,6 +16,7 @@ import {
   ApiOperation,
   ApiProperty,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -43,6 +44,7 @@ export class AuthController {
     private readonly tokenService: TokenService,
   ) { }
 
+  /*
   @Post('hashPassword')
   @ApiOperation({ summary: 'Generar el hash de una contraseña' })
   @ApiBody({ type: HashDTO })
@@ -61,6 +63,7 @@ export class AuthController {
       hash,
     });
   }
+  */
 
   @Post('login')
   @ApiOperation({ summary: 'Iniciar sesión del usuario' })
@@ -143,10 +146,11 @@ export class AuthController {
     summary: 'Generar el hash de una contraseña',
     description: 'Genera un token de solicitud de cambio de contraseña'
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiResponse({
     status: 200,
@@ -178,15 +182,17 @@ export class AuthController {
     summary: 'Validar solicitud de cambio de contraeña',
     description: 'Valida un token de solicitud de cambio de contraseña.'
   })
+  @ApiSecurity('X-API-KEY')
+  @ApiSecurity('X-Token-Recover')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente para identificarse',
-    required: true,
+    required: false,
   })
   @ApiHeader({
     name: 'X-Token-Recover',
     description: 'Clave secreta proporcionada al cliente para el cambio de contraseña',
-    required: true,
+    required: false,
   })
   async validarCambioContraseña(@Res() res: Response) {
     return res.status(200).json({ message: 'Token válido' });
@@ -199,15 +205,17 @@ export class AuthController {
     summary: 'Confirma el cambio de una contraseña',
     description: 'Valida un token de solicitud de cambio de contraseña. Se cambia la contraseña de un usuario'
   })
+  @ApiSecurity('X-API-KEY')
+  @ApiSecurity('X-Token-Recover')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente para identificarse',
-    required: true,
+    required: false,
   })
   @ApiHeader({
     name: 'X-Token-Recover',
     description: 'Clave secreta proporcionada al cliente para el cambio de contraseña',
-    required: true,
+    required: false,
   })
   async confirmarCambioContraseña(@Req() req: any, @Body() cambioDTO: CambiarContraseñaDTO, @Res() res: Response) {
     const userid = req.usuarioId;

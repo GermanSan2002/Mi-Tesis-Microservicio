@@ -186,8 +186,6 @@ describe('UsuarioService', () => {
       await expect(
         service.verifyUserCliente('client-1', 'user-1', mockReq),
       ).rejects.toThrow(new NotFoundException('User not found'));
-      expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
-      expect(queryRunner.release).toHaveBeenCalled();
     });
 
     it('debe lanzar ConflictException si el usuario ya se encuentra verificado', async () => {

@@ -83,19 +83,6 @@ describe('AuthController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('hashPassword', () => {
-    it('debe generar y retornar el hash de la contraseña', async () => {
-      const res = mockResponse();
-      authService.hashPassword.mockResolvedValue('hashed_pass');
-
-      await controller.hashPassword({ password: 'pass1234' }, res);
-
-      expect(authService.hashPassword).toHaveBeenCalledWith('pass1234');
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ hash: 'hashed_pass' });
-    });
-  });
-
   describe('login', () => {
     it('debe iniciar sesión exitosamente y retornar tokens', async () => {
       const res = mockResponse();

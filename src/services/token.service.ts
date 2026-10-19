@@ -141,7 +141,7 @@ export class TokenService {
     }
   }
 
-  async verifyRecuperarToken(token: string): Promise<RecuperarContraseñaPayload> {
+  verifyRecuperarToken(token: string): RecuperarContraseñaPayload {
     try {
       const payload = this.jwtService.verify<RecuperarContraseñaPayload>(token, {
         secret: jwtSecret,

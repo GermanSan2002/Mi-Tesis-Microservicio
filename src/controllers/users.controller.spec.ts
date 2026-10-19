@@ -85,7 +85,7 @@ describe('UsersController', () => {
 
   describe('verifyUserCliente', () => {
     it('debe verificar un usuario exitosamente y retornar status 200', async () => {
-      const expectedResult = { message: 'Usuario verificado exitosamente' };
+      const expectedResult = { message: 'Usuario verificado' };
       usuarioService.verifyUserCliente.mockResolvedValue(expectedResult as any);
 
       const res = mockResponse();

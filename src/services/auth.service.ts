@@ -269,7 +269,7 @@ export class AuthService {
         queryRunner.manager,
       );
 
-      await this.usuarioService.saveUsuario(user);
+      await this.usuarioService.saveUsuario(user, queryRunner.manager);
       // Si todo el circuito se completó con éxito, confirmamo los cambios físicos en la BD
       await queryRunner.commitTransaction();      
     } catch(err) {

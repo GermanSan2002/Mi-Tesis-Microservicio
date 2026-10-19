@@ -20,7 +20,7 @@ export class RecuperarPassGuard implements CanActivate {
         }
 
         // Verifico que el token no haya expirado
-        const payload = await this.tokenService.verifyRecuperarToken(recoverToken);
+        const payload = this.tokenService.verifyRecuperarToken(recoverToken);
 
         // Verifico que sea correcto
         const UsuarioValido = this.usuarioService.verifySolicitudCambio(payload.userId, recoverToken);

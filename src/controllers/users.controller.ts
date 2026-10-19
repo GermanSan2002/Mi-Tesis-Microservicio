@@ -180,7 +180,7 @@ export class UsersController {
     const idCliente = req.idCliente;
 
     const respuesta = await this.usuarioService.verifyUserCliente(idCliente, idUsuario, req);
-    return res.status(200).json(respuesta);
+    return res.status(200).json({message: "Usuario verificado"});
   }
 
   @Patch('/:idUsuario/asign-roles')

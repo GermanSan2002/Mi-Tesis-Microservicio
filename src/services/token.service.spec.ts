@@ -207,7 +207,7 @@ describe('TokenService', () => {
 
                 jwtService.verify.mockReturnValue(payload as never);
 
-                const result = await service.verifyRecuperarToken(token);
+                const result = service.verifyRecuperarToken(token);
 
                 expect(result).toEqual(payload);
             });
@@ -217,7 +217,7 @@ describe('TokenService', () => {
                     throw new Error('Malformed token');
                 });
 
-                await expect(service.verifyRecuperarToken(token)).rejects.toThrow(
+                expect(() => service.verifyRecuperarToken(token)).toThrow(
                     new UnauthorizedException('Invalid or expired token'),
                 );
             });

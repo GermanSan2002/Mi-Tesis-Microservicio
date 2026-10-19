@@ -27,10 +27,6 @@ export class SesionService {
     return manager ? manager.getRepository(Sesion) : this.sesionRepository;
   }
 
-  /**
-   * Tarea programada automatizada para dar de baja sesiones caducas.
-   * Se ejecuta de forma predeterminada cada 30 minutos.
-   */
   @Cron(CronExpression.EVERY_DAY_AT_4AM)
   async handleCleanExpiredSessions() {
     this.logger.log(

@@ -15,11 +15,13 @@ async function bootstrap() {
     .setDescription('API for managing users')
     .setVersion('1.0')
     .addBearerAuth()
+    .addApiKey({ type: 'apiKey', name: 'X-API-KEY', in: 'header' }, 'X-API-KEY')
+    .addApiKey({ type: 'apiKey', name: 'X-Token-Recover', in: 'header' }, 'X-Token-Recover')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('swagger', app, document);
 
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
   await app.listen(port);
-  console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();

@@ -45,10 +45,17 @@ export class UsuarioService {
     private readonly operacionService: OperacionService,
     private readonly clienteService: ClienteService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   private async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, saltRounds);
+  }
+
+  async comparePassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
   }
 
   private getRepository(manager?: EntityManager): Repository<Usuario> {
@@ -116,7 +123,7 @@ export class UsuarioService {
   async saveUsuario(
     user: Usuario,
     manager?: EntityManager,
-  ): Promise<Usuario>{
+  ): Promise<Usuario> {
     const repo = this.getRepository(manager);
 
     const save = repo.save(user);
@@ -129,7 +136,7 @@ export class UsuarioService {
     cliente: Cliente,
     updateUsuario: ModifyUsuarioDTO,
     req: any
-  ){
+  ) {
     const existingUser = await this.findUsuarioClientById(idUsuario, cliente.idCliente)
     if (!existingUser) {
       throw new ConflictException('Email already registered');
@@ -147,7 +154,7 @@ export class UsuarioService {
     // Obtener y validar los roles del cliente
     let roles: Rol[] = [];
 
-    if(updateUsuario.roles && updateUsuario.roles.length > 0){
+    if (updateUsuario.roles && updateUsuario.roles.length > 0) {
       roles = await this.rolService.findRolesByClienteId(cliente.idCliente);
 
       const rolesIdsCliente = new Set(roles.map((rol) => rol.idRol));
@@ -228,15 +235,15 @@ export class UsuarioService {
       cliente: { idCliente: idCliente },
     };
 
-    if(query.mail !== undefined) {
+    if (query.mail !== undefined) {
       whereConditions.correo = query.mail;
-    } else if(query.mailParcial !== undefined) {
+    } else if (query.mailParcial !== undefined) {
       whereConditions.correo = ILike(`%${query.mailParcial}%`);
     }
-    if(query.verified !== undefined) {
+    if (query.verified !== undefined) {
       whereConditions.verificado = query.verified;
     }
-    if(query.estado !== undefined) {
+    if (query.estado !== undefined) {
       whereConditions.estado = query.estado;
     }
 
@@ -272,7 +279,7 @@ export class UsuarioService {
 
     // verificar si el correo ya está registrado en ese cliente
     const existingUser = await this.usuarioRepository.findOne({
-      where: { correo: usuarioDTO.correo, cliente: clienteUsuario},
+      where: { correo: usuarioDTO.correo, cliente: clienteUsuario },
     });
     if (existingUser) {
       throw new ConflictException('Email already registered');
@@ -365,6 +372,32 @@ export class UsuarioService {
   }
 
   async verifyUserCliente(idCliente: string, idUsuario: string, req: any): Promise<void> {
+    const usuarioVerificar = await this.findUsuarioById(idUsuario);
+    // Verificar que el usuario existe
+    if (!usuarioVerificar) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verificar si ya estaba verificado
+    if (usuarioVerificar.verificado) {
+      throw new ConflictException('User is already verified');
+    }
+
+    // Verificar que el usuario pertenezca al cliente
+    if (
+      !usuarioVerificar.cliente ||
+      usuarioVerificar.idCliente !== idCliente
+    ) {
+      throw new BadRequestException(
+        'The user does not belong to the specified client',
+      );
+    }
+
+    console.log("Usuario controlado");
+    // Establecer estado de usuario como verificado
+    usuarioVerificar.verificado = true;
+    usuarioVerificar.estado = EstadosEntidades.ALTA;
+
     // Obtener datos para la operacion de verificación de usuario
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Unknown';
@@ -374,51 +407,13 @@ export class UsuarioService {
     await queryRunner.startTransaction();
 
     try {
-      // Buscar al usuario
-      const usuarioVerificar = await this.findUsuarioById(
-        idUsuario,
-        queryRunner.manager,
-      );
-
-      // Verificar que el usuario existe
-      if (!usuarioVerificar) {
-        throw new NotFoundException('User not found');
-      }
-
-      // Verificar si ya estaba verificado
-      if (usuarioVerificar.verificado) {
-        throw new ConflictException('User is already verified');
-      }
-
-      // Verificar que el cliente existe
-      const cliente = await this.clienteService.findClienteById(
-        idCliente,
-        queryRunner.manager,
-      );
-      if (!cliente) {
-        throw new NotFoundException('Client not found');
-      }
-
-      // Verificar que el usuario pertenezca al cliente
-      if (
-        !usuarioVerificar.cliente ||
-        usuarioVerificar.cliente.idCliente !== idCliente
-      ) {
-        throw new BadRequestException(
-          'The user does not belong to the specified client',
-        );
-      }
-
-      // Establecer estado de usuario como verificado
-      usuarioVerificar.verificado = true;
-      usuarioVerificar.estado = EstadosEntidades.ALTA;
-      await queryRunner.manager.save(Usuario, usuarioVerificar);
+      const repo = this.getRepository(queryRunner.manager)
 
       // Registramos la operacion
       await this.operacionService.create(
         {
           idUsuario: usuarioVerificar.idUsuario,
-          idCliente: usuarioVerificar.cliente.idCliente,
+          idCliente: usuarioVerificar.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.VERIFICAR_USUARIO, // Asegúrate de tener este tipo en tu enum
           metadatos: {
@@ -429,6 +424,7 @@ export class UsuarioService {
         },
         queryRunner.manager,
       );
+      await repo.save(usuarioVerificar);
 
       // Confirmar todos los cambios en la base de datos
       await queryRunner.commitTransaction();
@@ -452,16 +448,16 @@ export class UsuarioService {
     }
   }
 
-  async darAltaUsuario(idUsuario: string, idCliente: string, req: any, motivo?: string,): Promise<void>{
+  async darAltaUsuario(idUsuario: string, idCliente: string, req: any, motivo?: string,): Promise<void> {
     const usuario = await this.findUsuarioById(idUsuario);
 
-    if(!usuario){
+    if (!usuario) {
       throw new NotFoundException("Usuario no encontrado")
     }
-    if(usuario.cliente.idCliente != idCliente){
+    if (usuario.cliente.idCliente != idCliente) {
       throw new ConflictException("El usuario no pertece al cliente");
     }
-    if(usuario.estado == EstadosEntidades.ALTA){
+    if (usuario.estado == EstadosEntidades.ALTA) {
       throw new BadRequestException("Usuario ya dado de alta");
     }
 
@@ -472,8 +468,8 @@ export class UsuarioService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    
-    try{
+
+    try {
       const repositorio = this.getRepository(queryRunner.manager);
 
       usuario.estado = EstadosEntidades.ALTA;
@@ -503,24 +499,24 @@ export class UsuarioService {
     }
   }
 
-  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string, req: any): Promise<void>{
+  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string, req: any): Promise<void> {
     const usuario = await this.findUsuarioById(idUsuario);
 
-    if(!usuario){
+    if (!usuario) {
       throw new NotFoundException("Usuario no encontrado")
     }
-    if(usuario.cliente.idCliente != idCliente){
+    if (usuario.cliente.idCliente != idCliente) {
       throw new ConflictException("El usuario no pertece al cliente");
     }
-    if(usuario.estado == EstadosEntidades.BAJA){
+    if (usuario.estado == EstadosEntidades.BAJA) {
       throw new BadRequestException("Usuario ya dado de baja");
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    
-    try{
+
+    try {
       const repositorio = this.getRepository(queryRunner.manager);
 
       usuario.estado = EstadosEntidades.BAJA;
@@ -548,18 +544,18 @@ export class UsuarioService {
     }
   }
 
-  async registrarLoginFallido(usuario: Usuario, req: any): Promise<Usuario>{
+  async registrarLoginFallido(usuario: Usuario, req: any): Promise<Usuario> {
     let mensajeRegistro: string;
-    if(usuario.verificado){
+    if (usuario.verificado) {
       mensajeRegistro = "Contraseña incorrecta";
       usuario.intentosFallidosLogin++;
-    } else if (usuario.estado === EstadosEntidades.BAJA){
+    } else if (usuario.estado === EstadosEntidades.BAJA) {
       mensajeRegistro = "Usuario dado de baja";
       usuario.intentosFallidosLogin++;
     }
     mensajeRegistro = "Usuario no verificado";
 
-    if(usuario.intentosFallidosLogin>=3 && usuario.estado === EstadosEntidades.ALTA){
+    if (usuario.intentosFallidosLogin >= 3 && usuario.estado === EstadosEntidades.ALTA) {
       usuario.estado = EstadosEntidades.BAJA;
       usuario.intentosFallidosLogin = 0;
     }
@@ -572,7 +568,7 @@ export class UsuarioService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    try{
+    try {
       const repositorio = this.getRepository(queryRunner.manager);
 
       await this.operacionService.create(
@@ -590,7 +586,7 @@ export class UsuarioService {
         queryRunner.manager,
       );
 
-      if(usuario.estado == EstadosEntidades.BAJA){
+      if (usuario.estado == EstadosEntidades.BAJA) {
         await this.operacionService.create(
           {
             idUsuario: usuario.idUsuario,
@@ -619,7 +615,7 @@ export class UsuarioService {
     }
   }
 
-  async solicitudCambioContraseña(usuario: Usuario, token: string, req: any): Promise<void>{
+  async solicitudCambioContraseña(usuario: Usuario, token: string, req: any): Promise<void> {
     const hashToken = await this.hashPassword(token);
 
     usuario.recuperacionTokenHash = hashToken;
@@ -631,8 +627,8 @@ export class UsuarioService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    
-    try{
+
+    try {
       const repositorio = this.getRepository(queryRunner.manager);
 
       const operacion = await this.operacionService.create(
@@ -649,8 +645,6 @@ export class UsuarioService {
         queryRunner.manager,
       );
 
-      console.log("operacion de solicitud registrada");
-
       await repositorio.save(usuario);
       await queryRunner.commitTransaction();
     } catch (err) {
@@ -661,17 +655,17 @@ export class UsuarioService {
       await queryRunner.release();
     }
   }
-  
-  async verifySolicitudCambio(idUsuario: string, token: string): Promise<Usuario>{
+
+  async verifySolicitudCambio(idUsuario: string, token: string): Promise<Usuario> {
     const usuario = await this.findUsuarioById(idUsuario);
 
-    if(!usuario){
+    if (!usuario) {
       throw new NotFoundException("No se encontro el usaurio de la solicitud");
     }
 
-    const tokenHash = await this.hashPassword(token);
+    const tokenValido = await this.comparePassword(token, usuario.recuperacionTokenHash);
 
-    if(usuario.recuperacionTokenHash != tokenHash){
+    if (!tokenValido) {
       throw new UnauthorizedException("El token proporcionado no es valido")
     }
 
@@ -756,9 +750,9 @@ export class UsuarioService {
         throw new BadRequestException(`El rol con ID ${idRol} no está asignado al usuario`);
       }
     }
-    
+
     usuario.roles = usuario.roles.filter(r => !rolesARemover.includes(r));
-    
+
     // Obtener datos para la operacion de asignación de roles
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Unknown';
@@ -769,7 +763,7 @@ export class UsuarioService {
 
     try {
       const repoUsuario = this.getRepository(queryRunner.manager);
-      
+
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,

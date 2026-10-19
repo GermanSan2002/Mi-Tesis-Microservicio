@@ -399,7 +399,10 @@ describe('AuthService', () => {
         expect.objectContaining({ tipo: TipoOperacion.CAMBIAR_CONTRASENA }),
         queryRunner.manager,
       );
-      expect(usuarioService.saveUsuario).toHaveBeenCalledWith(mockUser);
+      expect(usuarioService.saveUsuario).toHaveBeenCalledWith(
+        mockUser,
+        queryRunner.manager
+      );
       expect(queryRunner.commitTransaction).toHaveBeenCalled();
       expect(queryRunner.release).toHaveBeenCalled();
     });
