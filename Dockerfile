@@ -21,7 +21,6 @@ COPY --chown=appuser:appuser . .
 RUN npm run build
 
 # Expone el puerto en el que correrá la aplicación
-EXPOSE 3000
-
+EXPOSE ${PORT}
 # El CMD por defecto.
 CMD ["npm", "run", "start:prod"]

@@ -1,14 +1,10 @@
-version: '3.8'
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: micro-users-tesis
     env_file:
       - .env
-    ports:
-      - '3000:3000'
     environment:
       JWT_SECRET: ${JWT_SECRET}
       HASH_SALT_ROUNDS: ${HASH_SALT_ROUNDS}
@@ -28,6 +24,16 @@ services:
     depends_on:
       - mysql-api
 
+  nginx:
+    image: nginx
+    restart: always
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: ${NGINX_HOST}
+    env_file: .env
+    ports:
+      - ${NGINX_PORT}:${NGINX_PORT}     
   mysql-api:
     image: mysql:8.0
     container_name: mysql-api
