@@ -1,14 +1,18 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cliente } from '../entities/cliente.entity';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { CreateClienteDto } from '../dto/clienteDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class ClienteService {
   constructor(
+    @Inject(CACHE_MANAGER) 
+    private cacheManager: Cache,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
     private readonly dataSource: DataSource,
@@ -78,8 +82,13 @@ export class ClienteService {
   }
 
   async validateApiKey(apiKeyProvista: string): Promise<Cliente | null> {
-    // Calculamos el hash determinista de la clave provista
     const hashTarget = this.hashApiKey(apiKeyProvista);
+    const cacheKey = `api_key_validada_${hashTarget}`;
+
+    const cachedData = await this.cacheManager.get<Cliente>(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
 
     // Traemos también el idCliente (UUID) para inyectarlo en el Request
     const cliente = await this.clienteRepository.findOne({
@@ -90,6 +99,8 @@ export class ClienteService {
     if (!cliente || cliente.estado !== 'A') {
       return null;
     }
+
+    await this.cacheManager.set(cacheKey, cliente, 300000);
 
     return cliente;
   }

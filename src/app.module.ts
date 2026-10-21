@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DataSourceConfig } from './database/data.source';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cliente } from './entities/cliente.entity';
@@ -26,6 +26,8 @@ import { RolModule } from './modules/rol.module';
 import { UsersController } from './controllers/users.controller';
 import { ClienteController } from './controllers/cliente.controller';
 import { ScheduleModule } from '@nestjs/schedule';
+import { redisStore } from 'cache-manager-redis-yet';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -36,6 +38,20 @@ import { ScheduleModule } from '@nestjs/schedule';
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({ ...DataSourceConfig }),
     TypeOrmModule.forFeature([Cliente, Usuario, Sesion, Rol, Operacion]),
+    CacheModule.registerAsync({
+      isGlobal: true, // Disponible en todos los módulos de la app
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        store: await redisStore({
+          socket: {
+            host: configService.get<string>('REDIS_HOST', 'redis'),
+            port: configService.get<number>('REDIS_PORT', 6379),
+          },
+          ttl: 60 * 1000,
+        }),
+      }),
+    }),
     TokenModule,
     AuthModule,
     SesionModule,

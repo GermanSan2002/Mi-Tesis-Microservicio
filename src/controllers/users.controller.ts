@@ -22,6 +22,7 @@ import {
   ApiPropertyOptional,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import { IsBoolean, IsEmail, IsEnum, IsInt, IsString, Max, Min } from 'class-validator';
@@ -101,10 +102,11 @@ export class UsersController {
     description:
       'Permite a un sistema externo integrado aprovisionar usuarios en su organización usando su API Key corporativa.',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiBody({
     type: CreateUsuarioDTO,
@@ -145,10 +147,11 @@ export class UsersController {
     description:
       'Cambia el estado del usuario a verificado y activo, registrando la auditoría de forma transaccional.',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiParam({
     name: 'idUsuario',
@@ -191,10 +194,11 @@ export class UsersController {
     description:
       'Permite asignar roles a un usuario, registrando la auditoría de forma transaccional.',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiParam({
     name: 'idUsuario',
@@ -242,10 +246,11 @@ export class UsersController {
     description:
       'Permite remover roles de un usuario, registrando la auditoría de forma transaccional.',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiParam({
     name: 'idUsuario',
@@ -293,10 +298,11 @@ export class UsersController {
     description:
       'Permite a un usuario administrador de un cliente obtener la lista de usuarios registrados de su organizacion',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiQuery({ name: 'page', required: true, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: true, type: Number, example: 10 })
@@ -331,10 +337,11 @@ export class UsersController {
     description:
       'Permite a un cliente dar de baja un usuario registrado en su organizacion',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiBody({
     type: BajaAltaDTO,
@@ -375,10 +382,11 @@ export class UsersController {
     description:
       'Permite a un cliente dar de alta un usuario registrado en su organizacion dado de baja',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiBody({
     type: BajaAltaDTO,
@@ -418,10 +426,11 @@ export class UsersController {
     description:
       'Permite a un cliente buscar un usuario por ID',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   async getUsuario(
     @Req() req: any,
@@ -443,10 +452,11 @@ export class UsersController {
     description:
       'Permite a un cliente actualizar los datos de un usuario de su organizacion',
   })
+  @ApiSecurity('X-API-KEY')
   @ApiHeader({
     name: 'X-API-Key',
     description: 'Clave secreta proporcionada al cliente',
-    required: true,
+    required: false,
   })
   @ApiBody({
     type: ModifyUsuarioDTO

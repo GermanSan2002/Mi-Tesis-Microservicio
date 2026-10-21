@@ -21,8 +21,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    */
   async validate(req: any, payload: any): Promise<AccessTokenPayload> {
     try {
-      console.log('Sesion: ' + payload.sesionId);
-      console.log('Usuario: ' + payload.userId);
       await this.sesionService.validateSession(
         payload.sesionId,
         payload.userId,

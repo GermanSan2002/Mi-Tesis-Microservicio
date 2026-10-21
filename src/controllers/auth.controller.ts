@@ -44,7 +44,6 @@ export class AuthController {
     private readonly tokenService: TokenService,
   ) { }
 
-  /*
   @Post('hashPassword')
   @ApiOperation({ summary: 'Generar el hash de una contraseña' })
   @ApiBody({ type: HashDTO })
@@ -63,7 +62,6 @@ export class AuthController {
       hash,
     });
   }
-  */
 
   @Post('login')
   @ApiOperation({ summary: 'Iniciar sesión del usuario' })

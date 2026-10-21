@@ -90,7 +90,7 @@ export class UsuarioService {
     manager?: EntityManager,
   ): Promise<Usuario | null> {
     const repo = this.getRepository(manager);
-    return repo.findOne({
+    return await repo.findOne({
       where: { correo: email },
       relations: ['roles', 'cliente'],
     });
@@ -603,7 +603,7 @@ export class UsuarioService {
         );
       }
 
-      repositorio.save(usuario);
+      await repositorio.save(usuario);
 
       return usuario;
     } catch (err) {

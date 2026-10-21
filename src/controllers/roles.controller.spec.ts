@@ -7,6 +7,7 @@ import { ExecutionContext } from '@nestjs/common';
 import { CreateRolDTO } from '../dto/rolDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
 import { Cliente } from '../entities/cliente.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 describe('RolController', () => {
     let controller: RolController;
@@ -21,7 +22,7 @@ describe('RolController', () => {
 
     const mockReq = {
         idCliente: 'client-uuid-123',
-        cliente: {idCliente: 'client-uuid-123'} as Cliente,
+        cliente: { idCliente: 'client-uuid-123' } as Cliente,
         ip: '127.0.0.1',
         headers: { 'x-api-key': 'test-api-key' },
     };
@@ -36,7 +37,16 @@ describe('RolController', () => {
                         getRolesByClienteId: jest.fn(),
                         createRol: jest.fn(),
                     }
-                }
+                },
+                {
+                    provide: CACHE_MANAGER,
+                    useValue: {
+                        get: jest.fn(),
+                        set: jest.fn(),
+                        del: jest.fn(),
+                        reset: jest.fn(),
+                    },
+                },
             ]
         })
             .overrideGuard(ApiKeyGuard)

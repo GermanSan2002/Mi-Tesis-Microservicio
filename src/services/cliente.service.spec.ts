@@ -8,6 +8,7 @@ import { ClienteService } from './cliente.service';
 import { Cliente } from '../entities/cliente.entity';
 import { EstadosEntidades } from '../entities/estadosEntidades';
 import { PlanesSuscripcion } from '../entities/planes-suscripcion.enum';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 describe('ClienteService', () => {
     let service: ClienteService;
@@ -48,6 +49,15 @@ describe('ClienteService', () => {
                 {
                     provide: DataSource,
                     useValue: dataSource,
+                },
+                {
+                    provide: CACHE_MANAGER,
+                    useValue: {
+                        get: jest.fn(),
+                        set: jest.fn(),
+                        del: jest.fn(),
+                        reset: jest.fn(),
+                    },
                 },
             ],
         }).compile();

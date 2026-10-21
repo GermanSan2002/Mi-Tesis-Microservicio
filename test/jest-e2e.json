@@ -3,6 +3,9 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "transformIgnorePatterns": [
+    "/node_modules/(?!(@nestjs/cache-manager|cache-manager)/)"
+  ],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

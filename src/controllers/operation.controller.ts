@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
-import { ApiBody, ApiHeader, ApiOperation, ApiParam, ApiProperty, ApiPropertyOptional, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { ApiHeader, ApiOperation, ApiParam, ApiProperty, ApiPropertyOptional, ApiQuery, ApiResponse, ApiSecurity, ApiTags } from "@nestjs/swagger";
 import { IsDate, IsEnum, IsInt, IsOptional, Max, Min } from "class-validator";
 import { TipoOperacion } from "../entities/tipo-operacion.enum";
 import { ApiKeyGuard } from "../guard/apiKeyGuard";
@@ -68,10 +68,11 @@ export class OperationController {
         description:
             'Permite a un cliente obtener las operaciones asociadas a un usuario específico dentro de su organización usando su API Key corporativa.',
     })
+    @ApiSecurity('X-API-KEY')
     @ApiHeader({
         name: 'X-API-Key',
         description: 'Clave secreta proporcionada al cliente',
-        required: true,
+        required: false,
     })
     @ApiParam({
         name: 'idUsuario',

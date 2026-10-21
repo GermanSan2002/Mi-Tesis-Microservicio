@@ -51,7 +51,6 @@ export class AuthService {
 
     // Buscar el usuario por correo electrónico
     const user = await this.usuarioService.findUsuarioByEmail(email);
-
     // Verificar si el usuario existe
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');

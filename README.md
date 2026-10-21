@@ -23,7 +23,9 @@ Este proyecto no solo busca cumplir con los requisitos de seguridad y eficiencia
    - [Comandos Disponibles](#comandos-disponibles)
    - [Endpoints Disponibles](#endpoints-disponibles)
       - [Modulo de autenticacion](#Módulo-de-Autenticación)
-      - [Módulo de Gestión de Clientes](#módulo-de-gestión-de-clientes)
+      - [Módulo de Gestión de Usuarios](#Módulo-de-Gestión-de-Usuarios)
+      - [Módulo de Gestión de Roles](#Módulo-de-Gestión-de-Roles)
+      - [Módulo de Gestión de Auditoría y Operaciones](#módulo-de-gestión-de-auditoría-y-operaciones)
 6. [Despliegue](#despliegue)
    - [Despliegue en Producción](#despliegue-en-producción)
    - [Despliegue con Kubernetes en Google Cloud](#despliegue-con-kubernetes-en-google-cloud)
@@ -60,8 +62,9 @@ Asegúrate de configurar las siguientes variables de entorno para el correcto fu
 - `JWT_SECRET`: Secreto para la generación de tokens JWT.
 - `HASH_SALT_ROUNDS`: Número de rondas para hashing de contraseñas.
 - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`: Configuraciones para la base de datos.
-- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`: Configuraciones para el servicio de correo.
-- `FRONTEND_URL`: URL del frontend asociado.
+- `PORT`: Puerto de la aplicacion
+- `NGINX_HOST`, `NGINX_HOST`: Configuracion NGINX
+- `REDIS_HOST`, `REDIS_PORT`: Configuracion REDIS
 
 ### Instalación y Requerimientos
 
@@ -140,212 +143,536 @@ Controlador encargado de la gestión de credenciales, ciclo de vida de sesiones 
 
 ---
 
-### 1. Generar Hash de Contraseña
-- **Método y Ruta:** `POST /auth/hashPassword`
-- **Descripción:** Endpoint utilitario para generar un hash seguro de una contraseña dada.
-- **Acceso / Autenticación:** Público.
-- **Cuerpo de la Petición (`Request Body`):**
+### 1. Iniciar Sesión (Login)
+
+* **Método y Ruta:** `POST /auth/login`
+* **Descripción:** Autentica a un usuario validando sus credenciales y genera un par de tokens (`accessToken` y `refreshToken`).
+* **Acceso / Autenticación:** Público.
+* **Cuerpo de la Petición (`Request Body`):** `CredentialsDTO`
   ```json
   {
-    "password": "pass1234"
+    "email": "juan.perez@example.com",
+    "password": "miPasswordSeguro123"
   }
+
   ```
-- **Respuestas esperadas**
-   - *** 200 OK: ***
-   ```json
-   {
-      "hash": "$2b$10$e81Z2..."
-   }
-   ```
-   - *** 200 OK: ***
-   ```json
-   {
-      "message": "Mensaje de error detallado"
-   }
-   ```
-### 2. Iniciar Sesión (Login)
-- **Método y Ruta:** `POST /auth/login`
-- **Descripción:** Descripción: Autentica a un usuario validando sus credenciales y genera un par de tokens (accessToken y refreshToken).
-- **Acceso / Autenticación:** Público.
-- **Cuerpo de la Petición (Request Body): CredentialsDTO:**
+* **Respuestas Esperadas:**
+* **200 OK:** Login exitoso y tokens generados.
   ```json
   {
-   "usuario": "juan.perez",
-   "password": "miPasswordSeguro123",
-   "idCliente": "CLI-001"
-   }
-   ```
-- **Respuestas esperadas**
-   - *** 200 OK: ***
-   ```json
-   {
-      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
-      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   }
-   ```
-   - *** 400 Bad Request: ***
-   ```json
-   {
-      "message": "Mensaje de error detallado"
-   }
-   ```
-### 3. Cerrar Sesión (Logout)
-- **Método y Ruta:** `POST /auth/logout`
-- **Descripción:** Invalida el refreshToken enviado y finaliza la sesión activa del usuario.
-- **Acceso / Autenticación:** Privado (Requiere Refresh Token)
-- **Cuerpo de la Petición (Request Body): LogoutDTO**
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+  }
+
+  ```
+* **401 Unauthorized:** Credenciales inválidas o usuario no verificado/bloqueado.
   ```json
-   {
-      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   }
-- **Respuestas esperadas**
-   - *** 201 Created / 200 OK: ***
-   ```json
-   {
-      "message": "Logout successful"
-   }
-   ```
-   - *** 401 Unauthorized: ***
-   ```json
+  {
+    "statusCode": 401,
+    "message": "Invalid email or password"
+  }
 
-   {
-   "message": "Refresh Token inválido o sesión no válida"
-   }
-   ```
-### 4. Verificar Token (Check Auth)
-- **Método y Ruta:** `POST /auth/checkAuth`
-- **Descripción:** Verifica la validez y decodifica el payload de un accessToken.
-- **Acceso / Autenticación:** Público / Utilitario.
-- **Cuerpo de la Petición (Request Body):**
-   ```json
-   {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   }
-   ```
-- **Respuestas esperadas**
-   - *** 201 Created / 200 OK: ***
-   ```json
-   {
-      "userId": "492272b4-7cb7-11f1-80d5-0242ac130002",
-      "idCliente": "043ef9f3-7cb7-11f1-80d5-0242ac130002",
-      "tipo": "SuperAdministrador",
-      "sesionId": "ad5379d8-7fb7-4e73-86e4-dcc7b7e0fa71",
-      "roles": [],
-      "iat": 1783726396,
-      "exp": 1783729996
-   }
-   ```
-   - *** 401 Unauthorized: ***
-   ```json
-   {
-      "statusCode": 401,
-      "message": "Invalid or expired token"
-   }
-   ```
-### 5. Renovar Token de Acceso (Refresh Token)
-- **Método y Ruta:** `POST /auth/refresh`
-- **Descripción:** Emite un nuevo accessToken válido utilizando un refreshToken no expirado.
-- **Acceso / Autenticación:** Privado (Basado en Refresh Token).
-- **Cuerpo de la Petición (Request Body):**
-   ```json
-   {
-      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   }
-   ```
-- **Respuestas esperadas**
-   - *** 200 OK: ***
-   ```json
-   {
-      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   }
-   ```
-   - *** 401 Unauthorized: ***
-   ```json
-   {
-      "statusCode": 401,
-      "message": "Invalid or expired refresh token"
-   }
-   ```
-### 6. Solicitar Recuperación de Contraseña
-- **Método y Ruta:** `POST /auth/solitarRecuperacion`
-- **Descripción:** Inicia el proceso de recuperación de clave para un usuario de una organización cliente y genera un token temporal de recuperación.
-- **Acceso / Autenticación:** M2M (ApiKeyGuard).
-- **Cabeceras Requeridas (Headers):**
-   - *** X-API-Key: Clave secreta M2M del cliente/organización. ***
-- **Cuerpo de la Petición (Request Body): RecuperarContraseñaSolicitudDTO**
-   ```json
-   {
-      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   }
-   ```
-- **Respuestas esperadas**
-   - *** 200 OK: ***
-   ```json
-   {
-    "message": "Solicitud procesada correctamente"
-   }
-   ```
-   - *** 400 Bad Request: El usuario no pertenece al cliente especificado. ***
-   - *** 404 Not Found: No existe el usuario a recuperar. ***
-   - *** 409 Conflict: El usuario ya se encuentra verificado o en estado inconsistente. ***
-### 7. Validar Token de Cambio de Contraseña
-- **Método y Ruta:** `POST /auth/validarCambioPass`
-- **Descripción:** Valida la integridad y vigencia de un token de recuperación de contraseña en el canal M2M.
-- **Acceso / Autenticación:** M2M + Recovery Token (ApiKeyGuard, RecuperarPassGuard).
-- **Cabeceras Requeridas (Headers):**
-   - *** X-API-Key: Clave secreta M2M del cliente/organización. ***
-   - *** X-Token-Recover: Token temporal emitido para el cambio de contraseña. ***
-- **Respuestas esperadas**
-   - *** 200 OK: ***
-   ```json
-   {
-    "message": "Solicitud procesada correctamente"
-   }
-   ```
-   - *** 401 Unauthorized: API Key o Token de recuperación inválido / expirado. ***
+  ```
+---
+### 2. Cerrar Sesión (Logout)
+* **Método y Ruta:** `POST /auth/logout`
+* **Descripción:** Invalida el `refreshToken` enviado y finaliza la sesión activa del usuario en la base de datos.
+* **Acceso / Autenticación:** Privado (Basado en `refreshToken`).
+* **Cuerpo de la Petición (`Request Body`):** `LogoutDTO`
+  ```json
+  {
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+  }
 
-### 7. Validar Token de Cambio de Contraseña
-- **Método y Ruta:** `POST /auth/confirmarRecuperacion`
-- **Descripción:** Actualiza la contraseña del usuario identificado tras validar el token de recuperación.
-- **Acceso / Autenticación:** M2M + Recovery Token (ApiKeyGuard, RecuperarPassGuard).
-- **Cabeceras Requeridas (Headers):**
-   - *** X-API-Key: Clave secreta M2M del cliente/organización. ***
-   - *** X-Token-Recover: Token temporal emitido para el cambio de contraseña. ***
-- **Cuerpo de la Petición (Request Body): RecuperarContraseñaSolicitudDTO**
-```json
-{
-   "nuevaPassword": "NuevaPasswordSegura2026!"
-}
-```
-- **Respuestas esperadas**
-   - *** 200 OK: ***
-   ```json
-   {
-    "message": "Contraseña actualizada exitosamente"
-   }
-   ```
-   - *** 401 Unauthorized: API Key o Token de recuperación inválido / expirado. ***
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Sesión cerrada correctamente.
+  ```json
+  {
+    "message": "Logout successful"
+  }
 
-## Módulo de Gestión de cClientes
+  ```
+* **401 Unauthorized:** Refresh Token inválido, expirado o sesión no existente/inactiva.
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Refresh Token inválido o sesión no válida"
+  }
 
-Controlador encargado de la administración y aprovisionamiento de las organizaciones o clientes (*tenants*) dentro de la plataforma multiempresa.
+  ```
 
 ---
 
-### 1. Registrar Nuevo Cliente / Empresa
-- **Método y Ruta:** `POST /client/registrar`
-- **Descripción:** Permite el aprovisionamiento de una nueva organización en el sistema. Genera automáticamente sus credenciales y su API Key criptográfica para la integración Machine-to-Machine (M2M).
-- **Acceso / Autenticación:** Privado (`JwtAuthGuard` + `TipoUsuarioGuard`).
-- **Rol Requerido:** `SUPER_ADMINISTRADOR`
-- **Cabeceras Requeridas (`Headers`):**
-  - `Authorization`: `Bearer <accessToken>`
-- **Cuerpo de la Petición (`Request Body`):** `CreateClienteDto`
+### 3. Verificar Token (Check Auth)
+
+* **Método y Ruta:** `POST /auth/checkAuth`
+* **Descripción:** Decodifica y verifica la validez y el contenido (*payload*) de un `accessToken`.
+* **Acceso / Autenticación:** Público / Utilitario.
+* **Cuerpo de la Petición (`Request Body`):**
   ```json
   {
-    "nombre": "Empresa Tech S.A.",
-    "mailContacto": "contacto@empresatech.com",
-    "plan": "Oro"
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
   }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK / 201 Created:** Token verificado y decodificado correctamente.
+  ```json
+  {
+    "decoded": {
+      "userId": "492272b4-7cb7-11f1-80d5-0242ac130002",
+      "idCliente": "043ef9f3-7cb7-11f1-80d5-0242ac130002",
+      "tipo": "SUPER_ADMINISTRADOR",
+      "sesionId": "ad5379d8-7fb7-4e73-86e4-dcc7b7e0fa71",
+      "roles": ["ADMIN"]
+    }
+  }
+
+  ```
+* **401 Unauthorized:** Token inválido o expirado.
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Invalid or expired token"
+  }
+
+  ```
+
+---
+
+### 4. Renovar Token de Acceso (Refresh Token)
+
+* **Método y Ruta:** `POST /auth/refresh`
+* **Descripción:** Emite un nuevo `accessToken` válido utilizando un `refreshToken` activo y no expirado.
+* **Acceso / Autenticación:** Privado (Basado en `refreshToken`).
+* **Cuerpo de la Petición (`Request Body`):**
+    ```json
+    {
+      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+    }
+
+    ```
+* **Respuestas Esperadas:**
+* **200 OK:** Nuevo token de acceso generado exitosamente.
+  ```json
+  {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+  }
+
+  ```
+* **401 Unauthorized:** Refresh token inválido, revocado o expirado.
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Invalid or expired refresh token"
+  }
+
+  ```
+
+---
+
+### 5. Solicitar Recuperación de Contraseña
+
+* **Método y Ruta:** `PATCH /auth/solitarRecuperacion`
+* **Descripción:** Inicia el proceso de recuperación de clave para un usuario de una organización cliente y genera un token temporal de recuperación.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M del cliente/organización.
+* **Cuerpo de la Petición (`Request Body`):** `RecuperarContraseñaSolicitudDTO`
+  ```json
+  {
+    "correo": "usuario@cliente.com"
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Solicitud procesada y token de recuperación generado.
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+  }
+
+  ```
+* **400 Bad Request:** El usuario no pertenece al cliente especificado.
+* **404 Not Found:** No existe un usuario con el correo proporcionado.
+* **409 Conflict:** El usuario se encuentra en un estado inconsistente.
+
+---
+
+### 6. Validar Token de Cambio de Contraseña
+
+* **Método y Ruta:** `POST /auth/validarCambioPass`
+* **Descripción:** Valida la integridad y vigencia de un token de recuperación de contraseña en el canal M2M.
+* **Acceso / Autenticación:** M2M + Recovery Token (`ApiKeyGuard`, `RecuperarPassGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M del cliente/organización.
+* `X-Token-Recover`: Token temporal emitido para la recuperación de contraseña.
+* **Respuestas Esperadas:**
+* **200 OK:** Token válido.
+  ```json
+  {
+    "message": "Token válido"
+  }
+
+  ```
+* **401 Unauthorized:** API Key o Token de recuperación inválido / expirado.
+
+---
+
+### 7. Confirmar Cambio de Contraseña
+
+* **Método y Ruta:** `PATCH /auth/confirmarRecuperacion`
+* **Descripción:** Actualiza la contraseña del usuario identificado tras validar el token de recuperación y la nueva credencial.
+* **Acceso / Autenticación:** M2M + Recovery Token (`ApiKeyGuard`, `RecuperarPassGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M del cliente/organización.
+* `X-Token-Recover`: Token temporal emitido para la recuperación.
+* **Cuerpo de la Petición (`Request Body`):** `CambiarContraseñaDTO`
+  ```json
+  {
+    "contraseña": "NuevaPasswordSegura2026!"
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Contraseña actualizada exitosamente.
+  ```json
+  {
+    "message": "Contraseña cambiada exitosamente"
+  }
+
+  ```
+* **401 Unauthorized:** Token de recuperación inválido o expirado.
+* **404 Not Found:** Usuario no encontrado.
+* **409 Conflict:** Usuario no verificado.
+
+## Módulo de Gestión de Usuarios
+
+Controlador encargado de la administración de identidades, asignación/remoción de roles corporativos, verificación de estados, altas/bajas lógicas y consultas paginadas con aislamiento multi-inquilino (*Tenant Isolation*).
+
+---
+
+### 1. Registrar Usuario (M2M)
+
+- **Método y Ruta:** `POST /users/registrar-usuario`
+- **Descripción:** Permite a un sistema externo integrado aprovisionar usuarios en su organización utilizando su API Key corporativa.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta M2M de la organización cliente.
+- **Cuerpo de la Petición (`Request Body`):** `CreateUsuarioDTO`
+  ```json
+  {
+    "correo": "usuario.nuevo@empresa.com",
+    "contraseña": "PasswordSegura123!",
+    "parametros": {
+      "departamento": "TI",
+      "cargo": "Desarrollador"
+    },
+    "roles": ["ROL_UUID_01", "ROL_UUID_02"]
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **201 Created:** Usuario registrado correctamente. Retorna la entidad creada.
+* **400 Bad Request:** Los roles enviados no pertenecen a la organización cliente.
+* **404 Not Found:** Cliente no encontrado.
+* **409 Conflict:** El correo electrónico ya se encuentra registrado.
+
+---
+
+### 2. Verificar Usuario
+
+* **Método y Ruta:** `PATCH /users/:idUsuario/verify`
+* **Descripción:** Cambia el estado del usuario a verificado y activo en la organización, registrando la auditoría de forma transaccional.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario a verificar.
+* **Respuestas Esperadas:**
+* **200 OK:** Usuario verificado exitosamente.
+  ```json
+  {
+    "message": "Usuario verificado"
+  }
+
+  ```
+* **400 Bad Request:** El usuario no pertenece al cliente especificado.
+* **404 Not Found:** Cliente o Usuario no encontrado.
+* **409 Conflict:** El usuario ya se encuentra verificado.
+
+---
+
+### 3. Asignar Roles a Usuario
+
+* **Método y Ruta:** `PATCH /users/:idUsuario/asign-roles`
+* **Descripción:** Asigna una lista de roles corporativos a un usuario perteneciente a la organización del cliente.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario.
+* **Cuerpo de la Petición (`Request Body`):** `RolesDTO`
+  ```json
+  {
+    "roles": ["ROL_UUID_01", "ROL_UUID_02"]
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Roles asignados exitosamente.
+* **400 Bad Request:** El usuario o los roles no pertenecen al cliente especificado.
+* **404 Not Found:** Cliente o Usuario no encontrado.
+
+---
+
+### 4. Remover Roles de Usuario
+
+* **Método y Ruta:** `PATCH /users/:idUsuario/remove-roles`
+* **Descripción:** Remueve una lista de roles asignados a un usuario de la organización cliente.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario.
+* **Cuerpo de la Petición (`Request Body`):** `RolesDTO`
+  ```json
+  {
+    "roles": ["ROL_UUID_01"]
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Roles removidos exitosamente.
+* **400 Bad Request:** El usuario no pertenece al cliente especificado.
+* **404 Not Found:** Cliente o Usuario no encontrado.
+* **500 Internal Server Error:** Error interno del servidor.
+
+---
+
+### 5. Obtener Lista Paginada de Usuarios del Cliente
+
+* **Método y Ruta:** `GET /users/cliente`
+* **Descripción:** Permite a un administrador o sistema integrado obtener la lista de usuarios registrados de su organización con filtros opcionales y paginación.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Consulta (`Query Params`):**
+* `page` (obligatorio, number): Número de página (ej. `1`).
+* `limit` (obligatorio, number): Cantidad de elementos por página (ej. `10`).
+* `mailParcial` (opcional, string): Búsqueda parcial por correo (ej. `ejemplo`).
+* `mail` (opcional, string): Búsqueda por correo exacto (ej. `ejemplo@gmail.com`).
+* `verified` (opcional, boolean): Filtrar por estado de verificación (`true`/`false`).
+* `estado` (opcional, enum): Estado de la entidad (`A` para Alta / `B` para Baja).
+* **Respuestas Esperadas:**
+* **200 OK:** Lista paginada de usuarios obtenida con éxito.
+* **404 Not Found:** Cliente no encontrado.
+* **500 Internal Server Error:** Error interno del servidor.
+
+---
+
+### 6. Dar de Baja Usuario
+
+* **Método y Ruta:** `PATCH /users/:idUsuario/baja`
+* **Descripción:** Ejecuta la baja lógica de un usuario perteneciente a la organización del cliente registrando el motivo.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario.
+* **Cuerpo de la Petición (`Request Body`):** `BajaAltaDTO`
+  ```json
+  {
+    "motivo": "Inactivación por cese laboral"
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Usuario dado de baja exitosamente.
+* **400 Bad Request:** El usuario no pertenece al cliente especificado.
+* **404 Not Found:** Usuario no encontrado.
+* **409 Conflict:** El usuario ya se encuentra dado de baja.
+
+---
+
+### 7. Reactivar / Dar de Alta Usuario
+
+* **Método y Ruta:** `PATCH /users/:idUsuario/alta`
+* **Descripción:** Reactiva a un usuario previamente dado de baja lógica dentro de la organización.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario.
+* **Cuerpo de la Petición (`Request Body`):** `BajaAltaDTO`
+```json
+{
+  "motivo": "Reincorporación de personal"
+}
+
+```
+* **Respuestas Esperadas:**
+* **200 OK:** Usuario dado de alta exitosamente.
+* **400 Bad Request:** El usuario no pertenece al cliente especificado.
+* **404 Not Found:** Usuario no encontrado.
+* **409 Conflict:** El usuario ya se encuentra dado de alta.
+
+---
+
+### 8. Obtener Usuario por ID
+
+* **Método y Ruta:** `GET /users/:idUsuario`
+* **Descripción:** Busca y retorna los datos detallados de un usuario específico garantizando el aislamiento por organización.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario.
+* **Respuestas Esperadas:**
+* **200 OK:** Objeto `Usuario` encontrado.
+* **404 Not Found:** Usuario no encontrado o no pertenece a la organización.
+
+---
+
+### 9. Actualizar Usuario
+
+* **Método y Ruta:** `PATCH /users/update/:idUsuario`
+* **Descripción:** Modifica los datos o parámetros de un usuario perteneciente a la organización cliente.
+* **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+* **Cabeceras Requeridas (`Headers`):**
+* `X-API-Key`: Clave secreta M2M de la organización cliente.
+* **Parámetros de Ruta (`URL Params`):**
+* `idUsuario`: ID o UUID del usuario.
+* **Cuerpo de la Petición (`Request Body`):** `ModifyUsuarioDTO`
+  ```json
+  {
+    "correo": "correo.actualizado@empresa.com",
+    "parametros": {
+      "departamento": "Finanzas"
+    }
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **200 OK:** Usuario actualizado correctamente.
+* **400 Bad Request:** Datos enviados inválidos.
+* **404 Not Found:** Usuario no encontrado.
+
+## Módulo de Gestión de Roles
+
+Controlador encargado de la definición, consulta y administración de la matriz de roles y permisos corporativos (*RBAC - Role Based Access Control*), garantizando el almacenamiento aislado por cada organización cliente (*Multi-tenant Isolation*). Incluye optimización de lectura mediante almacenamiento en memoria caché.
+
+---
+
+### 1. Obtener Roles de la Organización
+
+- **Método y Ruta:** `GET /roles/get-roles`
+- **Descripción:** Recupera la lista completa de roles asociados a la organización del cliente autenticado. Utiliza interceptores de caché (`CacheInterceptor` / TTL de 300.000 ms) para optimizar el rendimiento y reducir consultas redundantes a la base de datos relacional.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta M2M de la organización cliente.
+- **Respuestas Esperadas:**
+  - **200 OK:** Arreglo con la lista de roles registrados.
+    ```json
+    [
+      {
+        "idRol": "rol-1234-uuid",
+        "nombre": "ADMINISTRADOR",
+        "descripcion": "Acceso total a la gestión del cliente",
+        "estado": "A"
+      },
+      {
+        "idRol": "rol-5678-uuid",
+        "nombre": "OPERADOR",
+        "descripcion": "Acceso limitado a operaciones de lectura",
+        "estado": "A"
+      }
+    ]
+    ```
+  - **401 Unauthorized:** API Key no provista, inválida o revocada.
+  - **500 Internal Server Error:** Error interno del servidor o al recuperar la información.
+
+---
+
+### 2. Registrar Nuevo Rol (M2M)
+- **Método y Ruta:** `POST /roles/crear-rol`
+- **Descripción:** Permite a una organización o sistema integrado añadir un nuevo rol corporativo a su estructura usando su API Key.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta M2M de la organización cliente.
+- **Cuerpo de la Petición (`Request Body`):** `CreateRolDTO`
+  ```json
+  {
+    "nombre": "SUPERVISOR",
+    "descripcion": "Rol con permisos para supervisión y auditoría de operaciones"
+  }
+
+  ```
+* **Respuestas Esperadas:**
+* **201 Created:** Rol creado e integrado con éxito a la organización.
+  ```json
+  {
+    "idRol": "rol-9999-uuid",
+    "nombre": "SUPERVISOR",
+    "descripcion": "Rol con permisos para supervisión y auditoría de operaciones",
+    "estado": "A",
+    "cliente": {
+      "idCliente": "client-uuid-12345"
+    }
+  }
+
+  ```
+* **400 Bad Request:** Estructura o campos obligatorios del DTO inválidos.
+* **401 Unauthorized:** API Key no provista, inválida o revocada.
+* **500 Internal Server Error:** Error al procesar la creación o persistencia del rol.
+
+## Módulo de Gestión de Auditoría y Operaciones
+
+Controlador encargado de la consulta y trazabilidad de eventos de auditoría (*Audit Trail*) asociados a las actividades de los usuarios en la plataforma. Ofrece filtrado multicriterio, rangos de fechas e id del usuario con soporte para paginación y garantizando el aislamiento de datos por organización (*Tenant Isolation*).
+
+---
+
+### 1. Obtener Operaciones de un Usuario
+
+- **Método y Ruta:** `GET /operations/:idUsuario`
+- **Descripción:** Permite a una organización o sistema integrado consultar las operaciones y eventos de auditoría registrados para un usuario específico perteneciente a su tenant. Soporta paginación y filtros opcionales por tipo de operación y rangos temporales.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta M2M de la organización cliente.
+- **Parámetros de Ruta (`URL Params`):**
+  - `idUsuario`: ID o UUID del usuario a consultar (ej. `User_01`).
+- **Parámetros de Consulta (`Query Params`):**
+  - `page` (opcional, number): Número de página (predeterminado: `1`).
+  - `limit` (opcional, number): Cantidad de registros por página (mínimo: `10`, máximo: `100`, predeterminado: `10`).
+  - `tipo` (opcional, enum): Tipo de operación para filtrar (ej. `REGISTRO_USUARIO`, `LOGIN`, `CAMBIO_PASS`, etc.).
+  - `fechaRealizacion` (opcional, date/string): Fecha exacta de realización en formato ISO 8601 (ej. `2026-07-02T15:30:00.000Z`).
+  - `despueDe` (opcional, date/string): Fecha de inicio para filtrado de rango desde ese momento en adelante (ej. `2026-07-01T00:00:00.000Z`).
+  - `antesDe` (opcional, date/string): Fecha límite para filtrado de rango hasta ese momento (ej. `2026-07-31T23:59:59.999Z`).
+- **Respuestas Esperadas:**
+- **200 OK:** Objeto paginado con el listado de operaciones encontradas.
+  ```json
+    {
+      "data": [
+        {
+          "idOperacion": "op-uuid-101",
+          "tipo": "INICIO_SESION",
+          "fechaRealizacion": "2026-07-02T15:30:00.000Z",
+          "ipOrigen": "192.168.1.10",
+          "detalles": "Inicio de sesión exitoso"
+        }
+      ],
+      "meta": {
+        "totalItems": 45,
+        "itemsPerPage": 10,
+        "currentPage": 1,
+        "totalPages": 5
+      }
+    }
+  ```
+- **401 Unauthorized:** API Key no provista, inválida o expirada.
+- **404 Not Found:** Cliente u Organización o Usuario no encontrado.
+- **500 Internal Server Error:** Error interno del servidor al procesar la búsqueda.
 
 ### Despliegue
 

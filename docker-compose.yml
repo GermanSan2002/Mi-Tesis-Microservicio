@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     environment:
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}-
       HASH_SALT_ROUNDS: ${HASH_SALT_ROUNDS}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
       DB_HOST: mysql-api
@@ -15,15 +15,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
       PORT: ${PORT}
-      MAIL_HOST: ${MAIL_HOST}
-      MAIL_PORT: ${MAIL_PORT}
-      MAIL_USER: ${MAIL_USER}
-      MAIL_PASS: ${MAIL_PASS}
-      MAIL_FROM: ${MAIL_FROM}
-      FRONTEND_URL: ${FRONTEND_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - mysql-api
-
   nginx:
     image: nginx
     restart: always
@@ -48,7 +43,12 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
-
+  redis:
+      image: redis:alpine
+      container_name: redis_cache
+      restart: always
+      ports:
+        - "6379:6379"
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: phpmyadmin-api
