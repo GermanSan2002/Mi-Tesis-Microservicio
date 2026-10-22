@@ -28,13 +28,10 @@ Este proyecto no solo busca cumplir con los requisitos de seguridad y eficiencia
       - [Módulo de Gestión de Auditoría y Operaciones](#módulo-de-gestión-de-auditoría-y-operaciones)
 6. [Despliegue](#despliegue)
    - [Despliegue en Producción](#despliegue-en-producción)
-   - [Despliegue con Kubernetes en Google Cloud](#despliegue-con-kubernetes-en-google-cloud)
-   - [Despliegue en Render](#despliegue-en-render)
-   - [Despliegue con Kubernetes en AWS](#despliegue-con-kubernetes-en-aws)
-   - [Enlaces de Despliegue](#enlaces-de-despliegue)
 7. [Documentación](#documentación)
 8. [Contribución](#contribución)
 9. [Licencia](#licencia)
+
 ### Explicación del Proyecto
 
 #### Motivación
@@ -678,229 +675,181 @@ Controlador encargado de la consulta y trazabilidad de eventos de auditoría (*A
 
 #### Despliegue en Producción
 
-1. **Compila el código TypeScript a JavaScript**:
-   ```sh
-   npm run build
-   ```
-2. **Inicia el servidor en modo producción**:
-   ```sh
-   npm run start:prod
-   ```
+Para desplegar el entorno completo de producción o pruebas locales con **Docker Compose**, balanceo de carga mediante **Nginx**, persistencia en **MySQL** y soporte de caché distribuida en memoria con **Redis**, sigue los pasos estructurados a continuación[cite: 2, 3].
 
-#### Despliegue con Kubernetes en Google Cloud
+##### 1. Estructura de Configuración de Nginx (`nginx/default.conf.template`)
 
-1. **Inicia sesión en gcloud**:
-   ```sh
-   gcloud auth login
-   ```
-2. **Crea un clúster de Kubernetes**:
-   ```sh
-   gcloud container clusters create my-cluster --zone us-central1-a --num-nodes=3
-   ```
-3. **Construye las imágenes Docker**:
-   ```sh
-   docker-compose build
-   ```
-4. **Etiqueta y sube las imágenes a Google Container Registry (GCR)**:
-   ```sh
-   docker tag micro-users-app gcr.io/your-gcp-project-id/micro-users-app:v1
-   docker push gcr.io/your-gcp-project-id/micro-users-app:v1
-   ```
+Crea la plantilla de configuración en `./nginx/default.conf.template` para procesar dinámicamente las variables de entorno al iniciar el contenedor proxy[cite: 2]:
 
-5. **Autentica Docker con GCR**:
-   ```sh
-   gcloud auth configure-docker
-   ```
+```nginx
+server {
+    listen \${NGINX_PORT};
+    charset utf-8;
+    access_log off;
 
-6. **Configura los archivos YAML de Kubernetes**:
-   - `k8s/secrets.yaml`
-     ```yaml
-     apiVersion: v1
-     kind: Secret
-     metadata:
-       name: app-secrets
-     type: Opaque
-     data:
-       jwt_secret: eW91cl9qd3Rfc2VjcmV0
-       db_password: MTIzNDU2Nzg5
-       mail_user: c29neWdvayBkaW9zQGdtYWlsLmNvbQ==
-       mail_pass: bWJ4Z2ZneGJwdWp6enhk
-     ```
-   - `k8s/mysql.yaml`
-     ```yaml
-     apiVersion: v1
-     kind: PersistentVolumeClaim
-     metadata:
-       name: mysql-pv-claim
-     spec:
-       accessModes:
-         - ReadWriteOnce
-       resources:
-         requests:
-           storage: 20Gi
-     ---
-     apiVersion: v1
-     kind: Service
-     metadata:
-       name: mysql
-     spec:
-       ports:
-         - port: 3306
-       selector:
-         app: mysql
-     ---
-     apiVersion: apps/v1
-     kind: Deployment
-     metadata:
-       name: mysql
-     spec:
-       selector:
-         matchLabels:
-           app: mysql
-       template:
-         metadata:
-           labels:
-             app: mysql
-         spec:
-           containers:
-           - name: mysql
-             image: gcr.io/your-gcp-project-id/mysql:v1
-             ports:
-             - containerPort: 3306
-             env:
-             - name: MYSQL_ROOT_PASSWORD
-               valueFrom:
-                 secretKeyRef:
-                   name: app-secrets
-                   key: db_password
-             - name: MYSQL_DATABASE
-               value: "users_service"
-     ```
+    server_name \${NGINX_HOST};
 
-   - `k8s/deployment.yaml`
-     ```yaml
-     apiVersion: apps/v1
-     kind: Deployment
-     metadata:
-       name: micro-users
-     spec:
-       selector:
-         matchLabels:
-           app: micro-users
-       template:
-         metadata:
-           labels:
-             app: micro-users
-         spec:
-           containers:
-           - name: micro-users
-             image: gcr.io/your-gcp-project-id/micro-users-app:v1
-             ports:
-             - containerPort: 3000
-             env:
-             - name: JWT_SECRET
-               valueFrom:
-                 secretKeyRef:
-                   name: app-secrets
-                   key: jwt_secret
-             - name: HASH_SALT_ROUNDS
-               value: "10"
-             - name: DB_HOST
-               value: "mysql"
-             - name: DB_PORT
-               value: "3306"
-             - name: DB_USERNAME
-               value: "root"
-             - name: DB_PASSWORD
-               valueFrom:
-                 secretKeyRef:
-                   name: app-secrets
-                   key: db_password
-             - name: DB_DATABASE
-               value: "users_service"
-             - name: MAIL_HOST
-               value: "smtp.gmail.com"
-             - name: MAIL_PORT
-               value: "587"
-             - name: MAIL_USER
-               valueFrom:
-                 secretKeyRef:
-                   name: app-secrets
-                   key: mail_user
-             - name: MAIL_PASS
-               valueFrom:
-                 secretKeyRef:
-                   name: app-secrets
-                   key: mail_pass
-             - name: MAIL_FROM
-               value: "soygokussjdios@gmail.com"
-             - name: FRONTEND_URL
-               value: "frontend.com"
-     ```
+    location / {
+        # Redirección de peticiones hacia el clúster de NestJS
+        proxy_pass http://${SERVER_HOST}:${PORT};
 
-   - `k8s/service.yaml`
-     ```yaml
-     apiVersion: v1
-     kind: Service
-     metadata:
-       name: micro-users
-     spec:
-       type: LoadBalancer
-       ports:
-         - port: 80
-           targetPort: 3000
-       selector:
-         app: micro-users
-     ```
+        # Encabezados HTTP para proxy inverso y WebSockets
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
 
-7. **Aplica las configuraciones en Kubernetes**:
-   ```sh
-   kubectl apply -f k8s/secrets.yaml
-   kubectl apply -f k8s/mysql.yaml
-   kubectl apply -f k8s/deployment.yaml
-   kubectl apply -f k8s/service.yaml
-   ```
+        # Tiempos de espera y reconexión
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
+    }
+}
 
-#### Despliegue en Render
+```
 
-El proyecto también puede desplegarse en Render, conectando tu repositorio y configurando las variables de entorno directamente en la plataforma.
+##### 2. Dockerfile para Nginx (`nginx/Dockerfile`)
 
-#### Despliegue con Kubernetes en AWS
+Crea el archivo `./nginx/Dockerfile` para construir el contenedor del proxy/balanceador:
 
-1. **Configura AWS CLI**:
-   ```sh
-   aws configure
-   ```
+```dockerfile
+FROM nginx:1.18.0-alpine
+WORKDIR /etc/nginx/templates
+COPY default.conf.template /etc/nginx/templates/default.conf.template
 
-2. **Crea un clúster EKS**:
-   ```sh
-   eksctl create cluster --name my-cluster --region us-west-2 --nodegroup-name standard-workers --node-type t3.medium --nodes 3
-   ```
+```
 
-3. **Sube las imágenes Docker a Amazon ECR**:
-   ```sh
-   docker tag micro-users-app:latest <aws_account_id>.dkr.ecr.<region>.amazonaws.com/micro-users-app:latest
-   docker push <aws_account_id>.dkr.ecr.<region>.amazonaws.com/micro-users-app:latest
-   ```
+##### 3. Archivo de Orquestación (`docker-compose.yml`)
 
-4. **Configura los archivos YAML de Kubernetes para AWS**:
+El archivo `docker-compose.yml` en la raíz del proyecto integra la API de NestJS, Nginx, MySQL, Redis y phpMyAdmin bajo una red puente común (`app-network`):
 
-   Usa configuraciones similares a las usadas para GKE, pero asegúrate de actualizar los nombres de las imágenes para apuntar a tu Amazon ECR.
+```yaml
+services:
+  # Servicio de la API (NestJS)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      JWT_SECRET: \${JWT_SECRET}
+      HASH_SALT_ROUNDS: \${HASH_SALT_ROUNDS}
+      REFRESH_TOKEN_SECRET: \${REFRESH_TOKEN_SECRET}
+      DB_HOST: mysql-api
+      DB_PORT: 3306
+      DB_USERNAME: \${DB_USERNAME}
+      DB_PASSWORD: \${DB_PASSWORD}
+      DB_DATABASE: \${DB_DATABASE}
+      PORT: \${PORT}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mysql-api
+      - redis
+    networks:
+      - app-network
 
-5. **Aplica las configuraciones en Kubernetes**:
-   ```sh
-   kubectl apply -f k8s/secrets.yaml
-   kubectl apply -f k8s/mysql.yaml
-   kubectl apply -f k8s/deployment.yaml
-   kubectl apply -f k8s/service.yaml
-   ```
+  # Balanceador de Carga / Proxy Inverso (Nginx)
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: \${NGINX_HOST}
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${NGINX_PORT}:${NGINX_PORT}"
+    depends_on:
+      - app
+    networks:
+      - app-network
 
-#### Enlaces de Despliegue
+  # Base de Datos MySQL
+  mysql-api:
+    image: mysql:8.0
+    container_name: mysql-api
+    restart: always
+    ports:
+      - '3307:3306'
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: \${DB_PASSWORD}
+      MYSQL_DATABASE: \${DB_DATABASE}
+      MYSQL_USER: \${DB_USERNAME}
+      MYSQL_PASSWORD: \${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
 
-La aplicación está desplegada en los siguientes enlaces:
+  # Servicio de Caché Redis
+  redis:
+    image: redis:alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
 
-- **Google Kubernetes Engine (GKE)**: [http://34.46.95.132](http://34.46.95.132) (Este enlace estará disponible mientras dure la prueba gratuita de Google Cloud)
-- **Render**: [https://micro-users-wj9l.onrender.com](https://micro-users-wj9l.onrender.com)
+  # Gestor de Base de Datos phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin-api
+    restart: always
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: mysql-api
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: \${DB_PASSWORD}
+    depends_on:
+      - mysql-api
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+
+```
+
+##### 4. Comandos de Despliegue, Escalado y Verificación
+
+1. **Construir las imágenes del proyecto:**
+```bash
+docker compose build
+
+```
+
+
+2. **Iniciar el clúster con balanceo de carga (ejemplo con 3 réplicas de la API):**
+```bash
+docker compose up -d --scale app=3
+
+```
+
+
+3. **Verificar el estado de los contenedores activos:**
+```bash
+docker compose ps
+
+```
+
+
+4. **Monitorear la distribución Round-Robin del balanceador en los logs:**
+```bash
+docker compose logs -f app
+
+```
 
 ### Documentación
 
