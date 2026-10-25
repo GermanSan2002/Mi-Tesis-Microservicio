@@ -30,7 +30,7 @@ export interface RefreshTokenPayload {
 dotenv.config();
 
 const jwtSecret = process.env.JWT_SECRET;
-const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET || 'refresh-secret';
+const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
 
 if (!jwtSecret) {
   throw new Error('JWT_SECRET is not defined in the environment variables');

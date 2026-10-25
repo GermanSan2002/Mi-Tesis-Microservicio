@@ -23,7 +23,7 @@ export class RecuperarPassGuard implements CanActivate {
         const payload = this.tokenService.verifyRecuperarToken(recoverToken);
 
         // Verifico que sea correcto
-        const UsuarioValido = this.usuarioService.verifySolicitudCambio(payload.userId, recoverToken);
+        const UsuarioValido = await this.usuarioService.verifySolicitudCambio(payload.userId, recoverToken);
         if(!UsuarioValido){
             throw new UnauthorizedException("Solicitud invalida para el usuario")
         }

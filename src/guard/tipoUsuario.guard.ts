@@ -32,7 +32,7 @@ export class TipoUsuarioGuard implements CanActivate {
     }
 
     // Validar que el tipo de usuario en el JWT coincida con los permitidos
-    const valiidarTipo = tipoValidar == user.tipo;
+    const valiidarTipo = (tipoValidar === user.tipo);
 
     if (!valiidarTipo) {
       throw new ForbiddenException(

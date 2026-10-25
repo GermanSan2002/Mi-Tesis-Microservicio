@@ -14,13 +14,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       ? authHeader.slice(7)
       : authHeader;
 
-    console.log('Token recibido:', token);
     return super.canActivate(context);
   }
 
   handleRequest(err, user, info) {
     if (err || !user) {
-      console.log('Error JWT:', err);
       throw (
         err ||
         new UnauthorizedException(

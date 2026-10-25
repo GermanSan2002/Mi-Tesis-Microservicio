@@ -45,12 +45,14 @@ export class AuthService {
   }
 
   async login(
-    credentialsDTO: CredentialsDTO, req: any
+    credentialsDTO: CredentialsDTO,
+    cliente: Cliente, 
+    req: any
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const { email, password } = credentialsDTO;
 
     // Buscar el usuario por correo electrónico
-    const user = await this.usuarioService.findUsuarioByEmail(email);
+    const user = await this.usuarioService.findUsuarioByEmailAndCliente(email, cliente);
     // Verificar si el usuario existe
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');

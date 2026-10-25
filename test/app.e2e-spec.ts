@@ -65,8 +65,14 @@ describe('Microservicio E2E Tests (Integration)', () => {
 
     app = moduleFixture.createNestApplication();
     app.use(express.json());
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    
     await app.init();
     dataSource = app.get<DataSource>(DataSource);
   });

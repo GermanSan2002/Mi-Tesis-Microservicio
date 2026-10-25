@@ -34,6 +34,14 @@ describe('AuthService', () => {
   const mockReq = {
     ip: '127.0.0.1',
     headers: { 'user-agent': 'Jest-Agent' },
+    cliente: { 
+      idCliente: 'client-1',
+      estado: 'A',
+      mailContacto: 'test@mail.com',
+      apiKeyHash: 'hash',
+      nombre: 'Cliente Test',
+    } as Cliente,
+    usuarioId: 'user-1'
   };
 
   beforeEach(async () => {
@@ -123,7 +131,7 @@ describe('AuthService', () => {
     it('debe lanzar UnauthorizedException si el usuario no existe', async () => {
       usuarioService.findUsuarioByEmail.mockResolvedValue(null);
 
-      await expect(service.login(credentials, mockReq)).rejects.toThrow(
+      await expect(service.login(credentials, mockReq.cliente, mockReq)).rejects.toThrow(
         new UnauthorizedException('Invalid email or password'),
       );
     })
@@ -136,10 +144,10 @@ describe('AuthService', () => {
         verificado: false
       } as any;
 
-      usuarioService.findUsuarioByEmail.mockResolvedValue(mockUser);
+      usuarioService.findUsuarioByEmailAndCliente.mockResolvedValue(mockUser);
       usuarioService.registrarLoginFallido.mockResolvedValue(mockUser);
 
-      await expect(service.login(credentials, mockReq)).rejects.toThrow(
+      await expect(service.login(credentials, mockReq.cliente, mockReq)).rejects.toThrow(
         new UnauthorizedException('User not verified or down'),
       );
       expect(usuarioService.registrarLoginFallido).toHaveBeenCalledWith(
@@ -156,11 +164,11 @@ describe('AuthService', () => {
         verificado: true
       } as any;
 
-      usuarioService.findUsuarioByEmail.mockResolvedValue(mockUser);
+      usuarioService.findUsuarioByEmailAndCliente.mockResolvedValue(mockUser);
       jest.spyOn(service, 'comparePassword').mockResolvedValue(false);
       usuarioService.registrarLoginFallido.mockResolvedValue(mockUser);
 
-      await expect(service.login(credentials, mockReq)).rejects.toThrow(
+      await expect(service.login(credentials, mockReq.cliente, mockReq)).rejects.toThrow(
         new UnauthorizedException('Invalid email or password'),
       );
       expect(usuarioService.registrarLoginFallido).toHaveBeenCalledWith(
@@ -182,11 +190,11 @@ describe('AuthService', () => {
         estado: EstadosEntidades.BAJA,
       } as any;
 
-      usuarioService.findUsuarioByEmail.mockResolvedValue(mockUser);
+      usuarioService.findUsuarioByEmailAndCliente.mockResolvedValue(mockUser);
       jest.spyOn(service, 'comparePassword').mockResolvedValue(false);
       usuarioService.registrarLoginFallido.mockResolvedValue(mockUserBloqueado);
 
-      await expect(service.login(credentials, mockReq)).rejects.toThrow(
+      await expect(service.login(credentials, mockReq.cliente, mockReq)).rejects.toThrow(
         new UnauthorizedException(
           'Invalid email or password. User blocked, recover password',
         ),
@@ -202,7 +210,7 @@ describe('AuthService', () => {
       } as any;
       const mockSesion = { idSesion: 'sesion-123' } as any;
 
-      usuarioService.findUsuarioByEmail.mockResolvedValue(mockUser);
+      usuarioService.findUsuarioByEmailAndCliente.mockResolvedValue(mockUser);
       jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
       jest.spyOn(service, 'hashPassword').mockResolvedValue('hashed_refresh_token');
 
@@ -210,7 +218,7 @@ describe('AuthService', () => {
       tokenService.generateAccessToken.mockReturnValue('access_token_123');
       tokenService.generateRefreshToken.mockReturnValue('refresh_token_123');
 
-      const result = await service.login(credentials, mockReq);
+      const result = await service.login(credentials, mockReq.cliente, mockReq);
 
       expect(queryRunner.connect).toHaveBeenCalled();
       expect(queryRunner.startTransaction).toHaveBeenCalled();
@@ -245,11 +253,11 @@ describe('AuthService', () => {
         verificado: true,
       } as any;
 
-      usuarioService.findUsuarioByEmail.mockResolvedValue(mockUser);
+      usuarioService.findUsuarioByEmailAndCliente.mockResolvedValue(mockUser);
       jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
       sesionService.create.mockRejectedValue(new Error('DB Timeout'));
 
-      await expect(service.login(credentials, mockReq)).rejects.toThrow('DB Timeout');
+      await expect(service.login(credentials, mockReq.cliente, mockReq)).rejects.toThrow('DB Timeout');
       expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(queryRunner.release).toHaveBeenCalled();
     });

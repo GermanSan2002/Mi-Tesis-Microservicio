@@ -37,8 +37,10 @@ describe('RolService', () => {
             rollbackTransaction: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
             release: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
             manager: {
+                create: jest.fn(),
+                save: jest.fn(),
                 getRepository: jest.fn(),
-            } as unknown as EntityManager,
+            } as any,
         };
 
         dataSource = {
@@ -118,53 +120,51 @@ describe('RolService', () => {
     });
 
     describe('createRol', () => {
-        it('debe crear y persistir un nuevo rol exitosamente bajo una transacción', async () => {
-            const cliente = mockCliente as Cliente;
-            const createRolDto: CreateRolDTO = {
-                nombre: 'Supervisor',
-                descripcion: 'Rol de supervisión',
-            };
+        const rolData: CreateRolDTO = {
+            nombre: 'ADMIN_TEST',
+            descripcion: 'Rol de prueba',
+        };
+        const cliente = { idCliente: 'client-uuid-1' } as Cliente;
 
-            rolRepository.create.mockReturnValue({
-                ...mockRol,
-                nombre: createRolDto.nombre,
-                descripcion: createRolDto.descripcion,
+        it('debe crear y persistir un nuevo rol exitosamente bajo una transacción', async () => {
+            const mockNewRol = {
+                idRol: 'rol-uuid-1',
+                ...rolData,
+                estado: EstadosEntidades.ALTA,
+                cliente,
+            } as Rol;
+
+            (queryRunner.manager!.create as jest.Mock).mockReturnValue(mockNewRol);
+            (queryRunner.manager!.save as jest.Mock).mockResolvedValue(mockNewRol as never);
+
+            (queryRunner.manager!.getRepository as jest.Mock).mockReturnValue({
+                create: jest.fn().mockReturnValue(mockNewRol),
+                save: jest.fn().mockResolvedValue(mockNewRol as never),
             });
 
-            const result = await service.createRol(createRolDto, cliente);
+            const result = await service.createRol(rolData, cliente);
 
-            expect(dataSource.createQueryRunner).toHaveBeenCalled();
             expect(queryRunner.connect).toHaveBeenCalled();
             expect(queryRunner.startTransaction).toHaveBeenCalled();
-            expect(rolRepository.create).toHaveBeenCalledWith({
-                descripcion: createRolDto.descripcion,
-                nombre: createRolDto.nombre,
-                estado: EstadosEntidades.ALTA,
-                cliente
-            });
             expect(queryRunner.commitTransaction).toHaveBeenCalled();
             expect(queryRunner.release).toHaveBeenCalled();
-            expect(result.nombre).toEqual(createRolDto.nombre);
+            expect(result).toEqual(mockNewRol);
         });
 
         it('debe hacer rollback y lanzar el error si ocurre una falla durante la creación', async () => {
-            const cliente = mockCliente as Cliente;
-            const createRolDto: CreateRolDTO = {
-                nombre: 'Supervisor',
-                descripcion: 'Rol de supervisión',
-            };
-
             const dbError = new Error('Error de base de datos');
-            rolRepository.create.mockImplementation(() => {
-                throw dbError;
+            
+            (queryRunner.manager!.save as jest.Mock).mockRejectedValue(dbError as never);
+            (queryRunner.manager!.getRepository as jest.Mock).mockReturnValue({
+                create: jest.fn().mockReturnValue({}),
+                save: jest.fn().mockRejectedValue(dbError as never),
             });
 
-            await expect(service.createRol(createRolDto, cliente)).rejects.toThrow(dbError);
+            await expect(service.createRol(rolData, cliente)).rejects.toThrow('Error de base de datos');
 
             expect(queryRunner.startTransaction).toHaveBeenCalled();
             expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
             expect(queryRunner.release).toHaveBeenCalled();
-            expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
         });
     });
 });

@@ -44,7 +44,9 @@ export class RolService {
     await queryRunner.startTransaction();
 
     try {
-      const newRol = this.rolRepository.create({
+      const repo = queryRunner.manager.getRepository(Rol);
+
+      const newRol = repo.create({
         descripcion: rolData.descripcion,
         nombre: rolData.nombre,
         estado: EstadosEntidades.ALTA,
@@ -54,7 +56,7 @@ export class RolService {
       console.log(newRol);
       console.log(cliente.idCliente);
       
-      await this.rolRepository.save(newRol);
+      await repo.save(newRol);
       await queryRunner.commitTransaction();
       
       return newRol;

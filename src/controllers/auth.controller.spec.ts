@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 import { ClienteService } from '../services/cliente.service';
 import { UsuarioService } from '../services/usuario.service';
+import { MockPropertyContext } from 'node:test';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -93,7 +94,7 @@ describe('AuthController', () => {
 
       await controller.login(mockReq, credentials, res);
 
-      expect(authService.login).toHaveBeenCalledWith(credentials, mockReq);
+      expect(authService.login).toHaveBeenCalledWith(credentials, mockReq, mockReq.cliente);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(tokenResult);
     });

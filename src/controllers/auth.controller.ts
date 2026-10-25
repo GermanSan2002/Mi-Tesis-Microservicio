@@ -44,33 +44,23 @@ export class AuthController {
     private readonly tokenService: TokenService,
   ) { }
 
-  @Post('hashPassword')
-  @ApiOperation({ summary: 'Generar el hash de una contraseña' })
-  @ApiBody({ type: HashDTO })
-  @ApiResponse({
-    status: 200,
-    description: 'Hash generado correctamente',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Error al generar el hash',
-  })
-  async hashPassword(@Body() hashDTO: HashDTO, @Res() res: Response) {
-    const hash = await this.authService.hashPassword(hashDTO.password);
-
-    return res.status(200).json({
-      hash,
-    });
-  }
-
   @Post('login')
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({ summary: 'Iniciar sesión del usuario' })
+  @ApiSecurity('X-API-KEY')
+  @ApiHeader({
+    name: 'X-API-Key',
+    description: 'Clave secreta proporcionada al cliente',
+    required: false,
+  })
   @ApiBody({ type: CredentialsDTO })
   @ApiResponse({ status: 200, description: 'Login successful, token returned' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Req() req: any, @Body() credentialsDTO: CredentialsDTO, @Res() res: Response) {
-    const { accessToken, refreshToken } =
-    await this.authService.login(credentialsDTO, req);
+    const cliente = req.cliente;
+
+    const { accessToken, refreshToken } = await this.authService.login(credentialsDTO, req, cliente);
+    
     res.status(200).json({ accessToken, refreshToken });
   }
 
