@@ -94,7 +94,7 @@ describe('AuthController', () => {
 
       await controller.login(mockReq, credentials, res);
 
-      expect(authService.login).toHaveBeenCalledWith(credentials, mockReq, mockReq.cliente);
+      expect(authService.login).toHaveBeenCalledWith(credentials, mockReq.cliente, mockReq);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(tokenResult);
     });
