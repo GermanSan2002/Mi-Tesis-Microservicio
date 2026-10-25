@@ -59,7 +59,7 @@ export class AuthController {
   async login(@Req() req: any, @Body() credentialsDTO: CredentialsDTO, @Res() res: Response) {
     const cliente = req.cliente;
 
-    const { accessToken, refreshToken } = await this.authService.login(credentialsDTO, req, cliente);
+    const { accessToken, refreshToken } = await this.authService.login(credentialsDTO, cliente, req);
     
     res.status(200).json({ accessToken, refreshToken });
   }
