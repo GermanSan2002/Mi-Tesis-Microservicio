@@ -24,7 +24,7 @@ import { ClienteService } from '../services/cliente.service';
 @ApiTags('client')
 @Controller('client')
 export class ClienteController {
-  constructor(private readonly clienteService: ClienteService) {}
+  constructor(private readonly clienteService: ClienteService) { }
 
   @Post('registrar')
   @UseGuards(JwtAuthGuard, TipoUsuarioGuard)
@@ -58,7 +58,13 @@ export class ClienteController {
   })
   async registrarCliente(@Body() clienteDTO: CreateClienteDto, @Res() res: Response) {
     const respuesta = await this.clienteService.registrarCliente(clienteDTO);
-    return res.status(201).json(respuesta);
+
+    const { apiKeyHash, ...clientePublico } = respuesta.cliente;
+
+    return res.status(201).json({
+      cliente: clientePublico,
+      apiKey: respuesta.apiKey,
+    });
   }
 
   @Get('all')
@@ -72,7 +78,7 @@ export class ClienteController {
   })
   async getClientes(@Res() res: Response) {
     const respuesta = await this.clienteService.findAll();
-    
+
     return res.status(200).json(respuesta);
   }
 }

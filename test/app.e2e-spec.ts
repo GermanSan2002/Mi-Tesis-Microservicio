@@ -14,6 +14,7 @@ import { EstadosEntidades } from '../src/entities/estadosEntidades';
 import { RolService } from '../src/services/rol.service';
 import { Rol } from '../src/entities/rol.entity';
 import { Usuario } from '../src/entities/usuario.entity';
+import { ClienteModule } from 'src/modules/cliente.module';
 
 jest.setTimeout(15000);
 
@@ -29,6 +30,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
 
   let rolesPrueba: Rol[];
   let usuarioPrueba: Usuario;
+  let usuarioPruebaPass: string;
   let usuarioAdmin: Usuario;
 
   let usuarioService: UsuarioService;
@@ -53,9 +55,17 @@ describe('Microservicio E2E Tests (Integration)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
 
-    if (dataSource.isInitialized) {
-      await dataSource.synchronize(true);
+    if (!dataSource.isInitialized) {
+      throw new Error('La conexión a la base de datos de pruebas no está inicializada.');
     }
+
+    if (dataSource.options.database !== 'users-test') {
+      throw new Error(
+        `Base de datos incorrecta para E2E: ${dataSource.options.database}. Se esperaba users-test.`,
+      );
+    }
+
+    await dataSource.synchronize(true);
 
     clienteService = app.get(ClienteService);
     usuarioService = app.get(UsuarioService);
@@ -85,6 +95,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
       } as any,
       clientResponse.cliente
     );
+
     await rolService.createRol(
       {
         descripcion: "Rol Repositor",
@@ -427,6 +438,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
 
           //guardo usuario para pruebas futuras
           usuarioPrueba = response.body as Usuario;
+          usuarioPruebaPass = 'Password123!';
         });
 
         it('Debe retornar 409 CONFLICT si ya hay un usuario registrado para el cliente con ese correo', async () => {
@@ -991,7 +1003,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
             .set('X-API-Key', testApiKey)
             .send({ parametros: { prueba: true } })
             .expect(HttpStatus.NOT_FOUND);
-          });
+        });
 
         it('debe rechazar una API key inválida', async () => {
           const idPrueba = usuarioPrueba.idUsuario;
@@ -1022,7 +1034,167 @@ describe('Microservicio E2E Tests (Integration)', () => {
             .send({ propiedadInexistente: 'valor' })
             .expect(HttpStatus.BAD_REQUEST);
         });
+      });
+
+      describe('ClienteModule', () => {
+
+      });
+    });
+  });
+
+  describe('ClienteModule', () => {
+    describe('Flujo de registro de un cliente', () => {
+      describe('/client/registrar POST', () => {
+        it('Debe registrar un cliente y devolver su API key', async () => {
+          const response = await request(app.getHttpServer())
+            .post('/client/registrar')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({
+              nombre: 'Empresa E2E Nueva',
+              mailContacto: 'contacto@nuevaempresa-e2e.com',
+              plan: PlanesSuscripcion.PLATA,
+            })
+            .expect(HttpStatus.CREATED);
+
+          expect(response.body).toHaveProperty('cliente');
+          expect(response.body.cliente).toHaveProperty('idCliente');
+          expect(response.body.cliente.nombre).toBe('Empresa E2E Nueva');
+          expect(response.body.cliente.mailContacto).toBe(
+            'contacto@nuevaempresa-e2e.com',
+          );
+          expect(response.body.cliente.plan).toBe(
+            PlanesSuscripcion.PLATA,
+          );
+
+          // La API key original se entrega al crear el cliente.
+          expect(response.body.apiKey).toEqual(expect.any(String));
+          expect(response.body.apiKey).toMatch(/^sk_/);
+
+          // La clave original no debe aparecer como propiedad de la entidad.
+          expect(response.body.cliente.apiKey).toBeUndefined();
+          expect(response.body.cliente.apiKeyHash).toBeUndefined();
+        });
+
+        it('Debe rechazar la petición si no se proporciona JWT', async () => {
+          await request(app.getHttpServer())
+            .post('/client/registrar')
+            .send({
+              nombre: 'Empresa Sin Token',
+              mailContacto: 'contacto@sintoken.com',
+              plan: PlanesSuscripcion.BRONCE,
+            })
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+
+        it('Debe rechazar un JWT inválido', async () => {
+          await request(app.getHttpServer())
+            .post('/client/registrar')
+            .set('Authorization', 'Bearer token-invalido')
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+
+        it('Debe rechazar un DTO con datos inválidos', async () => {
+          await request(app.getHttpServer())
+            .post('/client/registrar')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({
+              nombre: 'AB',
+              mailContacto: 'correo-invalido',
+              plan: 'PLAN_INEXISTENTE',
+            })
+            .expect(HttpStatus.BAD_REQUEST);
+        });
+
+        it('Debe rechazar el registro si el usuario no es superadministrador', async () => {
+          const loginResponse = await request(app.getHttpServer())
+            .post('/auth/login')
+            .set('X-API-Key', testApiKey)
+            .send({
+              email: usuarioPrueba.correo,
+              password: usuarioPruebaPass,
+            })
+            .expect(HttpStatus.OK);
+
+          await request(app.getHttpServer())
+            .post('/client/registrar')
+            .set('Authorization', `Bearer ${loginResponse.body.accessToken}`)
+            .send({
+              nombre: 'Empresa No Autorizada',
+              mailContacto: 'contacto@noautorizada.com',
+              plan: PlanesSuscripcion.BRONCE,
+            })
+            .expect(HttpStatus.FORBIDDEN);
+        });
+      });
+    });
+
+    describe('Flujo de consulta de clientes', () => {
+      describe('/client/all (GET)', () => {
+        it('debe devolver la lista de clientes a un superadministrador', async () => {
+          const response = await request(app.getHttpServer())
+            .get('/client/all')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .expect(HttpStatus.OK)
+
+          expect(response.body).toBeDefined();
+          expect(response.body).toHaveLength(2);
+        });
+
+        it('debe rechazar la solicitud si no se proporciona un token', async () => {
+          return request(app.getHttpServer())
+            .get('/client/all')
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+
+        it('debe rechazar un token inválido', async () => {
+          return request(app.getHttpServer())
+            .get('/client/all')
+            .set('Authorization', 'Bearer token-invalido')
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+
+        it('Debe rechazar el registro si el usuario no es superadministrador', async () => {
+          const loginResponse = await request(app.getHttpServer())
+            .post('/auth/login')
+            .set('X-API-Key', testApiKey)
+            .send({
+              email: usuarioPrueba.correo,
+              password: usuarioPruebaPass,
+            })
+            .expect(HttpStatus.OK);
+
+          await request(app.getHttpServer())
+            .get('/client/all')
+            .set('Authorization', `Bearer ${loginResponse.body.accessToken}`)
+            .expect(HttpStatus.FORBIDDEN);
+        });
       })
     })
+  });
+
+  describe('OperationModule', () => {
+    describe('GET /operations/:idUsuario', () => {
+      it('debe devolver las operaciones del usuario', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/operations/${usuarioPrueba.idUsuario}`)
+          .set('X-API-Key', testApiKey)
+          .expect(200);
+
+        expect(response.body).toBeDefined();
+      });
+
+      it('debe rechazar la solicitud si falta la API Key', async () => {
+        await request(app.getHttpServer())
+          .get(`/operations/${usuarioPrueba.idUsuario}`)
+          .expect(401);
+      });
+
+      it('debe rechazar una API Key inválida', async () => {
+        await request(app.getHttpServer())
+          .get(`/operations/${usuarioPrueba.idUsuario}`)
+          .set('X-API-Key', 'api-key-invalida')
+          .expect(401);
+      });
+    });
   });
 });

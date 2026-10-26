@@ -18,15 +18,13 @@ export class TipoUsuarioGuard implements CanActivate {
       'tipo',
       context.getHandler(),
     );
-    console.log('Tipo a validar:' + tipoValidar);
     if (!tipoValidar) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    console.log(user);
-
+    
     if (!user) {
       throw new UnauthorizedException('No autenticado');
     }
