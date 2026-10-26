@@ -135,20 +135,12 @@ describe('UsuarioService', () => {
     };
     const clienteMock = { idCliente: 'client-1', nombre: 'Cliente Test' } as Cliente;
 
-    it('debe lanzar NotFoundException si el cliente no existe', async () => {
-      clienteService.findClienteById.mockResolvedValue(null);
-
-      await expect(
-        service.registerUserCliente(createDto, 'client-1', mockReq),
-      ).rejects.toThrow(new NotFoundException('Client not found'));
-    });
-
     it('debe lanzar ConflictException si el correo ya está registrado para el cliente', async () => {
       clienteService.findClienteById.mockResolvedValue(clienteMock);
       usuarioRepository.findOne.mockResolvedValue({ idUsuario: 'existing' } as Usuario);
 
       await expect(
-        service.registerUserCliente(createDto, 'client-1', mockReq),
+        service.registerUserCliente(createDto, clienteMock, mockReq),
       ).rejects.toThrow(new ConflictException('Email already registered'));
     });
 
@@ -164,7 +156,7 @@ describe('UsuarioService', () => {
       usuarioRepository.create.mockReturnValue(usuarioCreado);
       queryRunner.manager.save.mockResolvedValue(usuarioCreado);
 
-      const result = await service.registerUserCliente(createDto, 'client-1', mockReq);
+      const result = await service.registerUserCliente(createDto, clienteMock, mockReq);
 
       expect(queryRunner.connect).toHaveBeenCalled();
       expect(queryRunner.startTransaction).toHaveBeenCalled();
@@ -181,7 +173,7 @@ describe('UsuarioService', () => {
 
   describe('verifyUserCliente', () => {
     it('debe lanzar NotFoundException si el usuario no existe al verificar', async () => {
-      jest.spyOn(service, 'findUsuarioById').mockResolvedValue(null);
+      jest.spyOn(service, 'findUsuarioClientById').mockResolvedValue(null);
 
       await expect(
         service.verifyUserCliente('client-1', 'user-1', mockReq),
@@ -194,7 +186,8 @@ describe('UsuarioService', () => {
         verificado: true,
         cliente: { idCliente: 'client-1' },
       } as any;
-      jest.spyOn(service, 'findUsuarioById').mockResolvedValue(mockUser);
+
+      jest.spyOn(service, 'findUsuarioClientById').mockResolvedValue(mockUser);
 
       await expect(
         service.verifyUserCliente('client-1', 'user-1', mockReq),

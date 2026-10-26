@@ -79,10 +79,17 @@ export class UsuarioService {
     manager?: EntityManager,
   ): Promise<Usuario | null> {
     const repo = this.getRepository(manager);
-    return repo.findOne({
+
+    const usuario = await repo.findOne({
       where: { idUsuario, idCliente },
       relations: ['roles', 'cliente'],
     });
+
+    if (!usuario) {
+      throw new NotFoundException("El usuario no existe");
+    }
+
+    return usuario;
   }
 
   async findUsuarioByEmail(
@@ -131,6 +138,20 @@ export class UsuarioService {
     return save;
   }
 
+  async saveUsuarioHashPassword(
+    user: Usuario,
+    manager?: EntityManager,
+  ): Promise<Usuario> {
+    const repo = this.getRepository(manager);
+
+    const passHash = await this.hashPassword(user.contraseña);
+    user.contraseña = passHash;
+
+    const save = repo.save(user);
+
+    return save;
+  }
+
   async updateUsuario(
     idUsuario: string,
     cliente: Cliente,
@@ -139,39 +160,44 @@ export class UsuarioService {
   ) {
     const existingUser = await this.findUsuarioClientById(idUsuario, cliente.idCliente)
     if (!existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new NotFoundException('No existe el usuario');
     }
 
-    updateUsuario.contraseña = await this.hashPassword(updateUsuario.contraseña);
-
-    existingUser.correo = updateUsuario.correo;
-    existingUser.contraseña = updateUsuario.contraseña;
-    existingUser.estado = updateUsuario.estado;
-    existingUser.parametros = updateUsuario.parametros;
-    existingUser.tipo = updateUsuario.tipo;
-    existingUser.verificado = updateUsuario.verificado || existingUser.verificado;
-
-    // Obtener y validar los roles del cliente
-    let roles: Rol[] = [];
-
-    if (updateUsuario.roles && updateUsuario.roles.length > 0) {
-      roles = await this.rolService.findRolesByClienteId(cliente.idCliente);
-
-      const rolesIdsCliente = new Set(roles.map((rol) => rol.idRol));
-
-      const invalidRoles = updateUsuario.roles.filter(
-        (idRol) => !rolesIdsCliente.has(idRol),
+    if (updateUsuario.contraseña !== undefined) {
+      existingUser.contraseña = await this.hashPassword(
+        updateUsuario.contraseña,
       );
+    }
 
-      if (invalidRoles.length > 0) {
-        throw new BadRequestException(
-          `The following roles do not belong to the client: ${invalidRoles.join(', ')}`,
+    if (updateUsuario.correo !== undefined) {
+      const usuarioCorreo = await this.findUsuarioByEmailAndCliente(updateUsuario.correo, cliente);
+
+      if (
+        usuarioCorreo &&
+        usuarioCorreo.idUsuario !== existingUser.idUsuario
+      ) {
+        throw new ConflictException(
+          'El mail ya está registrado para el cliente',
         );
       }
 
-      // Conservar únicamente los roles solicitados
-      roles = roles.filter((rol) => updateUsuario.roles!.includes(rol.idRol));
-      existingUser.roles = roles;
+      existingUser.correo = updateUsuario.correo;
+    }
+
+    if (updateUsuario.estado !== undefined) {
+      existingUser.estado = updateUsuario.estado;
+    }
+
+    if (updateUsuario.parametros !== undefined) {
+      existingUser.parametros = updateUsuario.parametros;
+    }
+
+    if (updateUsuario.tipo !== undefined) {
+      existingUser.tipo = updateUsuario.tipo;
+    }
+
+    if (updateUsuario.verificado !== undefined) {
+      existingUser.verificado = updateUsuario.verificado;
     }
 
     // Obtener datos para la operacion de actualización de usuario
@@ -267,20 +293,12 @@ export class UsuarioService {
 
   async registerUserCliente(
     usuarioDTO: CreateUsuarioDTO,
-    idCliente: string,
+    cliente: Cliente,
     req: any
   ): Promise<Usuario> {
-    // Verificar que el cliente exista
-    const clienteUsuario = await this.clienteService.findClienteById(idCliente);
-    console.log(clienteUsuario);
-    if (!clienteUsuario) {
-      throw new NotFoundException('Client not found');
-    }
-
     // verificar si el correo ya está registrado en ese cliente
-    const existingUser = await this.usuarioRepository.findOne({
-      where: { correo: usuarioDTO.correo, cliente: clienteUsuario },
-    });
+    const existingUser = await this.findUsuarioByEmailAndCliente(usuarioDTO.correo, cliente);
+
     if (existingUser) {
       throw new ConflictException('Email already registered');
     }
@@ -289,7 +307,7 @@ export class UsuarioService {
     let roles: Rol[] = [];
 
     if (usuarioDTO.roles?.length) {
-      roles = await this.rolService.findRolesByClienteId(idCliente);
+      roles = await this.rolService.findRolesByClienteId(cliente.idCliente);
 
       const rolesIdsCliente = new Set(roles.map((rol) => rol.idRol));
 
@@ -318,7 +336,7 @@ export class UsuarioService {
       parametros: usuarioDTO.parametros,
       estado: EstadosEntidades.ALTA,
       verificado: false,
-      cliente: clienteUsuario,
+      cliente: cliente,
       roles,
     });
 
@@ -339,7 +357,7 @@ export class UsuarioService {
       await this.operacionService.create(
         {
           idUsuario: usuario.idUsuario,
-          idCliente: clienteUsuario.idCliente,
+          idCliente: cliente.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.CREAR_USUARIO,
           metadatos: {
@@ -372,7 +390,7 @@ export class UsuarioService {
   }
 
   async verifyUserCliente(idCliente: string, idUsuario: string, req: any): Promise<void> {
-    const usuarioVerificar = await this.findUsuarioById(idUsuario);
+    const usuarioVerificar = await this.findUsuarioClientById(idUsuario, idCliente);
     // Verificar que el usuario existe
     if (!usuarioVerificar) {
       throw new NotFoundException('User not found');
@@ -383,17 +401,6 @@ export class UsuarioService {
       throw new ConflictException('User is already verified');
     }
 
-    // Verificar que el usuario pertenezca al cliente
-    if (
-      !usuarioVerificar.cliente ||
-      usuarioVerificar.idCliente !== idCliente
-    ) {
-      throw new BadRequestException(
-        'The user does not belong to the specified client',
-      );
-    }
-
-    console.log("Usuario controlado");
     // Establecer estado de usuario como verificado
     usuarioVerificar.verificado = true;
     usuarioVerificar.estado = EstadosEntidades.ALTA;
@@ -448,14 +455,11 @@ export class UsuarioService {
     }
   }
 
-  async darAltaUsuario(idUsuario: string, idCliente: string, req: any, motivo?: string,): Promise<void> {
-    const usuario = await this.findUsuarioById(idUsuario);
+  async darAltaUsuario(idUsuario: string, idCliente: string, req: any, motivo?: string,): Promise<Usuario> {
+    const usuario = await this.findUsuarioClientById(idUsuario, idCliente);
 
     if (!usuario) {
       throw new NotFoundException("Usuario no encontrado")
-    }
-    if (usuario.cliente.idCliente != idCliente) {
-      throw new ConflictException("El usuario no pertece al cliente");
     }
     if (usuario.estado == EstadosEntidades.ALTA) {
       throw new BadRequestException("Usuario ya dado de alta");
@@ -489,7 +493,9 @@ export class UsuarioService {
         queryRunner.manager,
       );
 
-      repositorio.save(usuario);
+      const usuarioGuardado = await repositorio.save(usuario);
+      await queryRunner.commitTransaction();
+      return usuarioGuardado;
     } catch (err) {
       await queryRunner.rollbackTransaction();
 
@@ -499,18 +505,18 @@ export class UsuarioService {
     }
   }
 
-  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string, req: any): Promise<void> {
-    const usuario = await this.findUsuarioById(idUsuario);
+  async darBajaUsuario(idUsuario: string, idCliente: string, motivo: string, req: any): Promise<Usuario> {
+    const usuario = await this.findUsuarioClientById(idUsuario, idCliente);
 
     if (!usuario) {
       throw new NotFoundException("Usuario no encontrado")
     }
-    if (usuario.cliente.idCliente != idCliente) {
-      throw new ConflictException("El usuario no pertece al cliente");
-    }
     if (usuario.estado == EstadosEntidades.BAJA) {
       throw new BadRequestException("Usuario ya dado de baja");
     }
+
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -529,12 +535,17 @@ export class UsuarioService {
           tipo: TipoOperacion.DAR_BAJA_USUARIO, // Asegúrate de tener este tipo en tu enum
           metadatos: {
             motivo: motivo,
+            ipAddress: ipAddress,
+            userAgent: userAgent
           },
         },
         queryRunner.manager,
       );
 
-      repositorio.save(usuario);
+      const usuarioGuardado = await repositorio.save(usuario);
+      await queryRunner.commitTransaction();
+
+      return usuarioGuardado;
     } catch (err) {
       await queryRunner.rollbackTransaction();
 
@@ -678,21 +689,28 @@ export class UsuarioService {
       throw new BadRequestException('No roles provided for assignment');
     }
     const usuario = await this.findUsuarioClientById(idUsuario, idCliente);
-    const rolesAsignados: Rol[] = [];
+    let rolesAsignados: Rol[] = [];
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado o no pertenece al cliente');
     }
+
     for (const idRol of roles) {
-      const rol = await this.rolService.findRolesByClienteId(idCliente);
-      const rolEncontrado = rol.find(r => r.idRol === idRol);
-      if (rolEncontrado) {
-        rolesAsignados.push(rolEncontrado);
+      const rol = await this.rolService.findRolesByRolAndClienteId(idRol, idCliente);
+      if (rol) {
+        rolesAsignados.push(rol);
       } else {
         throw new BadRequestException(`El rol con ID ${idRol} no pertenece al cliente`);
       }
     }
 
-    usuario.roles = rolesAsignados;
+    usuario.roles = [
+      ...new Map(
+        [...(usuario.roles ?? []), ...rolesAsignados].map(rol => [
+          rol.idRol,
+          rol,
+        ]),
+      ).values(),
+    ];
 
     // Obtener datos para la operacion de asignación de roles
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;

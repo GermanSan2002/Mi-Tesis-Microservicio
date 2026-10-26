@@ -27,6 +27,15 @@ export class RolService {
     return repo.find({ where: { cliente: { idCliente } } });
   }
 
+  async findRolesByRolAndClienteId(
+    idRol: string,
+    idCliente: string,
+    manager?: EntityManager,
+  ): Promise<Rol | null> {
+    const repo = this.getRepository(manager);
+    return repo.findOne({ where: { idRol: idRol,idCliente: idCliente } });
+  }
+
   async getRolesByClienteId(
     idCliente: string,
     manager?: EntityManager,
@@ -52,9 +61,6 @@ export class RolService {
         estado: EstadosEntidades.ALTA,
         cliente: cliente,
       });
-
-      console.log(newRol);
-      console.log(cliente.idCliente);
       
       await repo.save(newRol);
       await queryRunner.commitTransaction();

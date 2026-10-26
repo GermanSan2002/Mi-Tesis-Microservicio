@@ -7,6 +7,7 @@ import { ExecutionContext } from '@nestjs/common';
 import { CreateUsuarioDTO, ModifyUsuarioDTO } from '../dto/usuarioDTO';
 import { BajaAltaDTO } from '../dto/bajaDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
+import { Cliente } from 'src/entities/cliente.entity';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -21,6 +22,7 @@ describe('UsersController', () => {
 
   const mockReq = {
     idCliente: 'client-uuid-123',
+    cliente: { idCliente: 'client-uuid-123' } as Cliente,
     ip: '127.0.0.1',
     headers: { 'x-api-key': 'test-api-key' },
   };
@@ -77,7 +79,7 @@ describe('UsersController', () => {
       const res = mockResponse();
       await controller.registerUserCliente(mockReq, dto, res);
 
-      expect(usuarioService.registerUserCliente).toHaveBeenCalledWith(dto, 'client-uuid-123', mockReq);
+      expect(usuarioService.registerUserCliente).toHaveBeenCalledWith(dto, mockReq.cliente, mockReq);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(expectedResult);
     });
@@ -166,7 +168,7 @@ describe('UsersController', () => {
       const res = mockResponse();
       await controller.darAltaUsuario(mockReq, 'User_01', altaDto, res);
 
-      expect(usuarioService.darAltaUsuario).toHaveBeenCalledWith('User_01', 'client-uuid-123', altaDto.motivo, mockReq as any);
+      expect(usuarioService.darAltaUsuario).toHaveBeenCalledWith('User_01', 'client-uuid-123', mockReq as any, altaDto.motivo);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expectedResult);
     });
@@ -197,7 +199,7 @@ describe('UsersController', () => {
 
       expect(usuarioService.updateUsuario).toHaveBeenCalledWith(
         'User_01',
-        'client-uuid-123' as any,
+        mockReq.cliente,
         updateDto,
         mockReq
       );

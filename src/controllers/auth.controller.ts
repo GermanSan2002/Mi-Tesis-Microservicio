@@ -152,16 +152,12 @@ export class AuthController {
     status: 404,
     description: 'No existe el usuario a recuperar.',
   })
-  @ApiResponse({
-    status: 409,
-    description: 'El usuario ya se encuentra verificado.',
-  })
   async solicitudCambioContraseña(@Req() req: any, @Body() recuperarDTO: RecuperarContraseñaSolicitudDTO, @Res() res: Response) {
     const cliente = req.cliente;
 
     const respuesta = await this.authService.solicitarRecuperarContraseña(recuperarDTO, cliente, req);
 
-    return res.status(200).json({"token": respuesta});
+    return res.status(200).json({ token: respuesta});
   }
 
   @Post('/validarCambioPass')

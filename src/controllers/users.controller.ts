@@ -25,7 +25,7 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsEnum, IsInt, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { Response } from 'express';
 import { BajaAltaDTO } from '../dto/bajaDTO';
 import { CreateUsuarioDTO, ModifyUsuarioDTO } from '../dto/usuarioDTO';
@@ -33,12 +33,14 @@ import { EstadosEntidades } from '../entities/estadosEntidades';
 import { Usuario } from '../entities/usuario.entity';
 import { ApiKeyGuard } from '../guard/apiKeyGuard';
 import { UsuarioService } from '../services/usuario.service';
+import { Type } from 'class-transformer';
 
 export class PaginatedUsuarioQuery {
     @ApiProperty({
         description: 'Número de página para la paginación',
         example: 1,
     })
+    @Type(() => Number)
     @IsInt()
     @Min(1)
     page: number = 1;
@@ -47,6 +49,7 @@ export class PaginatedUsuarioQuery {
         description: 'Número de elementos por página',
         example: 10,
     })
+    @Type(() => Number)
     @IsInt()
     @Min(10)
     @Max(100)
@@ -56,6 +59,7 @@ export class PaginatedUsuarioQuery {
         description: 'Cadena para buscar por coincidencia de correo',
         example: 'ejemplo'
     })
+    @IsOptional()
     @IsString()
     mailParcial?: string;
 
@@ -63,6 +67,7 @@ export class PaginatedUsuarioQuery {
         description: 'Mail solicitado para la busqueda',
         example: 'ejemplo@gmail.com'
     })
+    @IsOptional()
     @IsEmail()
     mail?: string;
 
@@ -70,6 +75,7 @@ export class PaginatedUsuarioQuery {
         description: 'Estado de verificación del usuario',
         example: true
     })
+    @IsOptional()
     @IsBoolean()
     verified?: boolean;
 
@@ -77,13 +83,14 @@ export class PaginatedUsuarioQuery {
         description: 'Estado del usuario',
         example: EstadosEntidades.ALTA
     })
+    @IsOptional()
     @IsEnum(EstadosEntidades)
     estado?: EstadosEntidades;
 }
 
 class RolesDTO {
   @ApiProperty({
-      description: 'Lista de roles',
+      description: 'Lista de ID de roles',
       example: ['rol1', 'rol2']
     })
   @IsString({ each: true })
@@ -117,10 +124,6 @@ export class UsersController {
     type: Usuario,
   })
   @ApiResponse({
-    status: 404,
-    description: 'Cliente no encontrado.',
-  })
-  @ApiResponse({
     status: 409,
     description: 'El correo ya se encuentra registrado.',
   })
@@ -133,9 +136,9 @@ export class UsersController {
     @Body() usuarioDTO: CreateUsuarioDTO,
     @Res() res: Response
   ) {
-    const idCliente = req.idCliente;
+    const cliente = req.cliente;
 
-    const respuesta = await this.usuarioService.registerUserCliente(usuarioDTO, idCliente, req);
+    const respuesta = await this.usuarioService.registerUserCliente(usuarioDTO, cliente, req);
     return res.status(201).json(respuesta);
   }
 
@@ -192,7 +195,7 @@ export class UsersController {
   @ApiOperation({
     summary: 'Asignar roles a un usuario asociado a un cliente específico',
     description:
-      'Permite asignar roles a un usuario, registrando la auditoría de forma transaccional.',
+      'Permite asignar nuevos roles a un usuario, registrando la auditoría de forma transaccional.',
   })
   @ApiSecurity('X-API-KEY')
   @ApiHeader({
@@ -415,7 +418,7 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, altaDTO.motivo, req);
+    const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, req, altaDTO.motivo);
     return res.status(200).json(respuesta);
   }
 
@@ -467,9 +470,9 @@ export class UsersController {
     @Body() updateUsuario: ModifyUsuarioDTO,
     @Res() res: Response
   ){
-    const idCliente = req.idCliente;
+    const cliente = req.cliente;
 
-    const respuesta = await this.usuarioService.updateUsuario(idUsuario, idCliente, updateUsuario, req);
+    const respuesta = await this.usuarioService.updateUsuario(idUsuario, cliente, updateUsuario, req);
 
     return res.status(200).json(respuesta);
   }
