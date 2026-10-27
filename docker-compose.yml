@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     environment:
-      JWT_SECRET: ${JWT_SECRET}-
+      JWT_SECRET: ${JWT_SECRET}
       HASH_SALT_ROUNDS: ${HASH_SALT_ROUNDS}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
       DB_HOST: ${DB_HOST}
@@ -19,6 +19,7 @@ services:
       REDIS_PORT: ${REDIS_PORT}
     depends_on:
       - mysql-api
+      - redis
   nginx:
     image: nginx
     restart: always
@@ -33,7 +34,7 @@ services:
     image: mysql:8.0
     container_name: mysql-api
     ports:
-      - '${DB_PORT}:${DB_PORT}'
+      - 3307:${DB_PORT}
     env_file:
       - .env
     environment:
