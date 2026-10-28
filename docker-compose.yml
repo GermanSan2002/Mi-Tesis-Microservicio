@@ -34,7 +34,7 @@ services:
     image: mysql:8.0
     container_name: mysql-api
     ports:
-      - 3307:${DB_PORT}
+      - ${DB_PORT_LOCAL}:${DB_PORT}
     env_file:
       - .env
     environment:
