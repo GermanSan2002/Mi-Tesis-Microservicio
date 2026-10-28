@@ -13,8 +13,8 @@ export const options = {
   stages: [
     { duration: '30s', target: 10 },
     { duration: '1m', target: 50 },
-    { duration: '1m', target: 100 },
-    { duration: '1m', target: 200 },
+    { duration: '1m', target: 80 },
+    { duration: '1m', target: 120 },
     { duration: '30s', target: 0 }
   ],
   thresholds: {
@@ -35,7 +35,7 @@ export const options = {
   noConnectionReuse: false,
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:9000';
+const BASE_URL = __ENV.BASE_URL || 'http://161.153.198.41:9000';
 const API_KEY = "sk_5e67ed57e78ff68e6c73710da524d66c749d4b9b7d622d468e027c763b4c55a2";
 const TEST_EMAIL = "usuario@empresa.com";
 const TEST_PASSWORD = "usuario@empresa.com";

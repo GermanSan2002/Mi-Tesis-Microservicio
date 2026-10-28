@@ -46,9 +46,9 @@ jobs:
       DB_DATABASE: users-test
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
-      JWT_SECRET: secret
-      REFRESH_TOKEN_SECRET: refresh-secret
-      HASH_SALT_ROUNDS: 10
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+      HASH_SALT_ROUNDS: ${{ secrets.HASH_SALT_ROUNDS }}
 
     steps:
     - name: Checkout repository

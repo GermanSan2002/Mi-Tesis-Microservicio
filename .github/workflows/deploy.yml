@@ -1,0 +1,80 @@
+name: CD Pipeline - Continuous Deployment to OCI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch: # Permite ejecuciones manuales desde la pestaña Actions
+
+jobs:
+  deploy:
+    name: Deploy to Oracle Cloud Infrastructure (ARM)
+    runs-on: ubuntu-latest
+
+    # Variables globales necesarias para las pruebas en el runner de GitHub
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+      HASH_SALT_ROUNDS: ${{ secrets.HASH_SALT_ROUNDS }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_DATABASE: ${{ secrets.DB_DATABASE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Unit & Integration tests
+        run: npm run test -- --runInBand
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Deploying to OCI via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USERNAME }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          port: ${{ secrets.OCI_PORT }}
+          script: |
+            # 1. Navegar al directorio de la aplicación en la VM de OCI
+            cd ~/Mi-Tesis-Microservicio || exit 1
+
+            # 2. Inyectar dinámicamente el archivo .env desde las Secrets de GitHub
+            cat << 'EOF' > .env
+            NGINX_PORT=80
+            NGINX_HOST=nginx
+            SERVER_HOST=app
+            PORT=3000
+            DB_HOST=mysql-api
+            DB_PORT=3306
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_DATABASE=${{ secrets.DB_DATABASE }}
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
+            HASH_SALT_ROUNDS=${{ secrets.HASH_SALT_ROUNDS }}
+            FRONTEND_URL=http://${{ secrets.OCI_HOST }}
+            EOF
+
+            # 3. Descargar los últimos cambios desde la rama principal
+            sudo git pull origin master
+
+            # 4. Reconstruir y desplegar el clúster escalado a 2 réplicas (Aprovechando los 2 núcleos ARM)
+            sudo docker compose down
+            sudo docker compose up -d --build --scale app=2
+
+            # 5. Limpieza de imágenes e instancias en desuso para optimizar almacenamiento en la VM
+            sudo docker system prune -f

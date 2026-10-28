@@ -26,11 +26,13 @@ Este proyecto no solo busca cumplir con los requisitos de seguridad y eficiencia
       - [Módulo de Gestión de Usuarios](#Módulo-de-Gestión-de-Usuarios)
       - [Módulo de Gestión de Roles](#Módulo-de-Gestión-de-Roles)
       - [Módulo de Gestión de Auditoría y Operaciones](#módulo-de-gestión-de-auditoría-y-operaciones)
-6. [Despliegue](#despliegue)
+6. [Datos de prueba para la API](#datos-de-prueba-para-la-api)
+7. [Despliegue](#despliegue)
    - [Despliegue en Producción](#despliegue-en-producción)
-7. [Documentación](#documentación)
-8. [Contribución](#contribución)
-9. [Licencia](#licencia)
+   - [Despliegue en la nube](#despliegue-en-la-nube)
+8. [Documentación](#documentación)
+9. [Contribución](#contribución)
+10. [Licencia](#licencia)
 
 ### Explicación del Proyecto
 
@@ -671,6 +673,79 @@ Controlador encargado de la consulta y trazabilidad de eventos de auditoría (*A
 - **404 Not Found:** Cliente u Organización o Usuario no encontrado.
 - **500 Internal Server Error:** Error interno del servidor al procesar la búsqueda.
 
+## Datos de Prueba para la API
+
+Para facilitar el proceso de evaluación, desarrollo y pruebas de integración local/remota de las distintas rutas expuestas por el microservicio, se proporcionan las siguientes credenciales y datos preconfigurados.
+
+---
+
+#### 1. Credenciales para la Integración M2M (Servidor a Servidor)
+
+Las peticiones orientadas a la integración entre sistemas externos y el microservicio (como aprovisionamiento de usuarios, creación de roles y consulta de operaciones) operan sobre el canal **Machine-to-Machine (M2M)**. Este canal requiere autenticación mediante **API Key corporativa** a través del encabezado HTTP `X-API-Key`.
+
+* **API Key de Prueba:**
+  ```text
+  sk_5e67ed57e78ff68e6c73710da524d66c749d4b9b7d622d468e027c763b4c55a2
+
+```
+
+* **Encabezado HTTP Requerido (`Header`):**
+```http
+X-API-Key: sk_5e67ed57e78ff68e6c73710da524d66c749d4b9b7d622d468e027c763b4c55a2
+
+```
+
+> **Nota de Seguridad:** La API Key provista corresponde al hash registrado para el cliente/organización de prueba en la base de datos de desarrollo/evaluación. El microservicio resuelve de forma automática el identificador de la organización (`idCliente` / `tenantId`) a partir del hash determinista SHA-256 de esta clave.
+
+---
+
+#### 2. Credenciales de Usuario de Prueba (Canal Interactivo)
+
+Para las operaciones que requieren autenticación de usuario final o administrador de cliente (inicio de sesión, obtención de tokens JWT y renovación de sesión):
+
+* **Correo Electrónico (`TEST_EMAIL`):** `usuario@empresa.com`
+* **Contraseña (`TEST_PASSWORD`):** `usuario@empresa.com`
+
+##### Ejemplo de Petición de Inicio de Sesión (`POST /auth/login`):
+
+```bash
+curl -X POST "http://localhost:3000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@empresa.com",
+    "password": "usuario@empresa.com"
+  }'
+
+```
+
+**Respuesta Esperada (`200 OK`):**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+}
+
+```
+
+---
+
+#### 3. Ejemplo de Uso Combinado en Postman / cURL
+
+#### Aprovisionamiento de Usuario vía API Key (M2M)
+
+```bash
+curl -X POST "http://localhost:3000/users/registrar-usuario" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk_5e67ed57e78ff68e6c73710da524d66c749d4b9b7d622d468e027c763b4c55a2" \
+  -d '{
+    "correo": "nuevo.empleado@empresa.com",
+    "contraseña": "PasswordSegura123!",
+    "roles": []
+  }'
+
+```
+
 ### Despliegue
 
 #### Despliegue en Producción
@@ -848,9 +923,195 @@ docker compose ps
 4. **Monitorear la distribución Round-Robin del balanceador en los logs:**
 ```bash
 docker compose logs -f app
+```
+
+#### Despliegue en la Nube
+
+Para garantizar un entorno de producción altamente disponible, escalable y automatizado, el microservicio está preparado para desplegarse de manera continua (*Continuous Deployment*) en **Oracle Cloud Infrastructure (OCI)**[cite: 1]. 
+
+Aprovechando la capacidad de cómputo de la arquitectura ARM64 (Ampere Altra) asignada a la máquina virtual (`VM.Standard.A1.Flex` con 2 OCPUs y 12 GB de RAM)[cite: 1], el flujo de despliegue ejecuta la compilación nativa de los contenedores y distribuye la carga entre las réplicas de la API[cite: 1].
+
+---
+
+##### 1. Arquitectura de Despliegue en OCI
+
+```text
+               [ Peticiones de Internet ]
+                           │
+                           ▼
+             ┌───────────────────────────┐
+             │    Oracle Cloud (OCI)     │ (Ingress Security List / Firewall: Ports 80, 443)
+             └─────────────┬─────────────┘
+                           │
+                           ▼
+             ┌───────────────────────────┐
+             │ Nginx (Proxy / Load Bal.) │ (Puerto 80)
+             └─────────────┬─────────────┘
+                           │
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+  ┌─────────────────────┐     ┌─────────────────────┐
+  │ NestJS API (App 1)  │     │ NestJS API (App 2)  │ (Escalado ARM en 2 OCPUs)
+  └──────────┬──────────┘     └──────────┬──────────┘
+             │                           │
+             └─────────────┬─────────────┘
+                           │
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+  ┌─────────────────────┐     ┌─────────────────────┐
+  │   MySQL 8.0 (DB)    │     │    Redis (Cache)    │ (Volúmenes Persistentes)
+  └─────────────────────┘     └─────────────────────┘
 
 ```
 
+* **Proxy Inverso / Balanceador de Carga:** Nginx recibe el tráfico de red en el puerto 80 y lo distribuye mediante el algoritmo *Round-Robin* entre las réplicas activas de NestJS.
+
+
+* **Escalabilidad Multihilo:** Al correr 2 réplicas de la API (`--scale app=2`), se aprovecha al máximo el paralelismo de los 2 núcleos dedicados de la CPU ARM.
+
+
+* **Persistencia de Datos:** Los volúmenes montados en la VM garantizan que `docker compose down` detenga los contenedores sin alterar los datos transaccionales almacenados en MySQL.
+
+---
+
+##### 2. Configuración de Credenciales en GitHub Secrets
+
+Para mantener la seguridad del servidor y los entornos de producción sin exponer credenciales en el repositorio, se deben registrar los siguientes secretos en **GitHub** (`Settings -> Secrets and variables -> Actions`):
+
+| Nombre de la Secret | Descripción / Asignación |
+| --- | --- |
+| `OCI_HOST` | Dirección IP pública de la instancia de Oracle Cloud. |
+| `OCI_USERNAME` | Usuario SSH con acceso a la máquina virtual (`ubuntu` u `opc`). |
+| `OCI_SSH_KEY` | Clave privada SSH de acceso al servidor. |
+| `OCI_PORT` | Puerto de conexión SSH (`22`). |
+| `DB_USERNAME` | Usuario administrador/aplicación para MySQL. |
+| `DB_PASSWORD` | Contraseña segura para la base de datos MySQL. |
+| `DB_DATABASE` | Nombre de la base de datos relacional. |
+| `JWT_SECRET` | Clave secreta para la firma de tokens JWT. |
+| `REFRESH_TOKEN_SECRET` | Clave secreta para la generación de tokens de refresco. |
+| `HASH_SALT_ROUNDS` | Número de rondas para el hashing con bcrypt. |
+
+---
+
+##### 3. Workflow de Integración y Despliegue Continuo (CI/CD)
+
+El archivo `.github/workflows/deploy.yml` automatiza la suite de pruebas unitarias/integración, la compilación de TypeScript y la ejecución remota vía SSH en Oracle Cloud:
+
+```yaml
+name: CD Pipeline - Continuous Deployment to OCI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch: # Permite ejecuciones manuales desde la pestaña Actions
+
+jobs:
+  deploy:
+    name: Deploy to Oracle Cloud Infrastructure (ARM)
+    runs-on: ubuntu-latest
+
+    # Variables globales inyectadas para la ejecución de pruebas unitarias
+    env:
+      JWT_SECRET: \${{ secrets.JWT_SECRET }}
+      REFRESH_TOKEN_SECRET: \${{ secrets.REFRESH_TOKEN_SECRET }}
+      HASH_SALT_ROUNDS: \${{ secrets.HASH_SALT_ROUNDS }}
+      DB_USERNAME: \${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: \${{ secrets.DB_PASSWORD }}
+      DB_DATABASE: \${{ secrets.DB_DATABASE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Unit & Integration tests
+        run: npm run test -- --runInBand
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Deploying to OCI via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: \${{ secrets.OCI_HOST }}
+          username: \${{ secrets.OCI_USERNAME }}
+          key: \${{ secrets.OCI_SSH_KEY }}
+          port: \${{ secrets.OCI_PORT }}
+          script: |
+            # 1. Navegar al directorio del proyecto en la máquina virtual
+            cd ~/Mi-Tesis-Microservicio || exit 1
+
+            # 2. Inyectar dinámicamente el archivo .env desde GitHub Secrets
+            cat << 'EOF' > .env
+            NGINX_PORT=80
+            NGINX_HOST=nginx
+            SERVER_HOST=app
+            PORT=3000
+            DB_HOST=mysql-api
+            DB_PORT=3306
+            DB_USERNAME=\${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=\${{ secrets.DB_PASSWORD }}
+            DB_DATABASE=\${{ secrets.DB_DATABASE }}
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            JWT_SECRET=\${{ secrets.JWT_SECRET }}
+            REFRESH_TOKEN_SECRET=\${{ secrets.REFRESH_TOKEN_SECRET }}
+            HASH_SALT_ROUNDS=\${{ secrets.HASH_SALT_ROUNDS }}
+            FRONTEND_URL=http://\${{ secrets.OCI_HOST }}
+            EOF
+
+            # 3. Descargar los últimos cambios del repositorio
+            git pull origin master
+
+            # 4. Reconstruir y desplegar el clúster escalado a 2 réplicas ARM
+            docker compose down
+            docker compose up -d --build --scale app=2
+
+            # 5. Limpieza de imágenes e instancias inactivas para optimizar almacenamiento
+            docker system prune -f
+
+```
+
+---
+
+##### 4. Requisitos Previos en la Instancia de Oracle Cloud
+
+Para asegurar que la primera ejecución automatizada del pipeline se complete con éxito, la máquina virtual en OCI debe configurarse previamente con las siguientes reglas:
+
+1. **Apertura de Puertos en OCI (Security List):**
+* En la consola web de Oracle Cloud, ingresar a `Networking -> Virtual Cloud Networks -> Security List` y agregar una regla de ingreso (*Ingress Rule*) para habilitar el tráfico de los puertos `80` (HTTP) y `443` (HTTPS) desde la CIDR `0.0.0.0/0`.
+
+
+2. **Configuración de Firewall de Linux (`iptables`/`ufw`):**
+```bash
+sudo ufw allow 80/tcp
+sudo ufw reload
+
+```
+
+
+3. **Asignación de Permisos de Docker al Usuario:**
+```bash
+sudo usermod -aG docker \$USER
+
+```
+
+
+4. **Clonación Inicial del Repositorio:**
+```bash
+cd ~
+git clone [https://github.com/GermanSan2002/Mi-Tesis-Microservicio.git](https://github.com/GermanSan2002/Mi-Tesis-Microservicio.git)
+
+```
 ### Documentación
 
 #### GitHub Actions
