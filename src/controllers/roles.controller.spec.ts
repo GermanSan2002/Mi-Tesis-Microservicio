@@ -35,6 +35,7 @@ describe('RolController', () => {
                     provide: RolService,
                     useValue: {
                         getRolesByClienteId: jest.fn(),
+                        findRolesByClienteId: jest.fn(),
                         createRol: jest.fn(),
                     }
                 },
@@ -71,12 +72,12 @@ describe('RolController', () => {
                 { idRol: 'rol-2', nombre: 'USER', descripcion: 'Usuario regular' },
             ];
 
-            rolService.getRolesByClienteId.mockResolvedValue(expectedRoles as any);
+            rolService.findRolesByClienteId.mockResolvedValue(expectedRoles as any);
 
             const res = mockResponse();
             await controller.getRoles(mockReq, res);
 
-            expect(rolService.getRolesByClienteId).toHaveBeenCalledWith('client-uuid-123');
+            expect(rolService.findRolesByClienteId).toHaveBeenCalledWith('client-uuid-123');
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith(expectedRoles);
         })

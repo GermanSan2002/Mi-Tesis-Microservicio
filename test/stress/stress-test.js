@@ -1,54 +1,128 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { Rate, Trend } from 'k6/metrics';
 
-// 1. Configuración del perfil de carga 
+// Métricas independientes por endpoint.
+const rolesDuration = new Trend('roles_duration', true);
+const loginDuration = new Trend('login_duration', true);
+
+const rolesErrors = new Rate('roles_errors');
+const loginErrors = new Rate('login_errors');
+
 export const options = {
   stages: [
-    { duration: '30s', target: 20 },  // Ramp-up: Subir paulatinamente a 20 usuarios en 30s
-    { duration: '1m',  target: 100 }, // Carga sostenida: Mantener 100 usuarios concurrentes durante 1 min
-    { duration: '30s', target: 200 }, // Estrés pico: Escalar a 200 usuarios concurrentes en 30s
-    { duration: '30s', target: 0 },   // Ramp-down: Reducir progresivamente a 0
+    { duration: '30s', target: 10 },
+    { duration: '1m', target: 50 },
+    { duration: '1m', target: 100 },
+    { duration: '1m', target: 200 },
+    { duration: '30s', target: 0 }
   ],
   thresholds: {
-    // Defino los Slos / criterios de éxito para la tesis
-    http_req_failed: ['rate<0.01'],   // Menos del 1% de errores HTTP aceptados
-    http_req_duration: ['p(95)<500'], // El 95% de las peticiones deben responder en menos de 500 ms
+    // Criterios generales.
+    http_req_failed: ['rate<0.01'],
+
+    // Latencia independiente de cada endpoint.
+    roles_duration: ['p(95)<200'],
+    login_duration: ['p(95)<500'],
+
+    // Menos del 1 % de errores funcionales por endpoint.
+    roles_errors: ['rate<0.01'],
+    login_errors: ['rate<0.01'],
   },
+
+  // Evita que las solicitudes a localhost usen el proxy
+  // configurado en el entorno de la máquina.
+  noConnectionReuse: false,
 };
 
-const BASE_URL = 'http://localhost:9000'; // Ajustar la URL/Puerto segun el entorno de ejecucion
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:9000';
+const API_KEY = "sk_5e67ed57e78ff68e6c73710da524d66c749d4b9b7d622d468e027c763b4c55a2";
+const TEST_EMAIL = "usuario@empresa.com";
+const TEST_PASSWORD = "usuario@empresa.com";
+
+if (!API_KEY || !TEST_EMAIL || !TEST_PASSWORD) {
+  throw new Error(
+    'Debes configurar TEST_API_KEY, TEST_EMAIL y TEST_PASSWORD.'
+  );
+}
+
+const commonParams = {
+  timeout: '30s',
+  tags: { service: 'nest-api' },
+};
 
 export default function () {
-  // Scenario 1: Lectura M2M protegida con ApiKeyGuard
-  const m2mHeaders = {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'sk_86535453fbbd82c8a666b94b6a63163c1e9ae43c69e64abeb37a9537b68db291', // Reemplazar por una API Key valida de prueba
-  };
-
-  const resRoles = http.get(`${BASE_URL}/roles/get-roles`, { headers: m2mHeaders });
-
-  check(resRoles, {
-    'M2M Roles: Status es 200': (r) => r.status === 200,
-    'M2M Roles: Tiempo de respuesta < 200ms': (r) => r.timings.duration < 200,
+  // Escenario 1: consulta protegida de roles.
+  const resRoles = http.get(`${BASE_URL}/roles/get-roles`, {
+    ...commonParams,
+    headers: {
+      Accept: 'application/json',
+      'X-API-KEY': API_KEY,
+    },
+    tags: { endpoint: 'get-roles', scenario: 'roles' },
   });
 
-  sleep(0.5); // Pausa breve de procesamiento entre interacciones
+  rolesDuration.add(resRoles.timings.duration);
 
-  // Scenario 2: Login / Computo de Hashing con Bcrypt
-  const loginPayload = JSON.stringify({
-    email: 'usuario@empresa.com', //reemplazar por un usuario de prueba
-    password: 'usuario@empresa.com',
+  const rolesOk = check(resRoles, {
+    'Roles: HTTP 200': (r) => r.status === 200,
+    'Roles: respuesta JSON válida': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch (_) {
+        return false;
+      }
+    },
+    'Roles: latencia inferior a 200 ms': (r) =>
+      r.timings.duration < 200,
   });
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-  };
+  rolesErrors.add(!rolesOk);
 
-  const resLogin = http.post(`${BASE_URL}/auth/login`, loginPayload, { headers: authHeaders });
+  sleep(0.5);
 
-  check(resLogin, {
-    'Auth Login: Status es 200 o 201': (r) => r.status === 200 || r.status === 201,
+  // Escenario 2: inicio de sesión.
+  const payload = JSON.stringify({
+    email: TEST_EMAIL,
+    password: TEST_PASSWORD,
   });
+
+  const resLogin = http.post(`${BASE_URL}/auth/login`, payload, {
+    ...commonParams,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-API-KEY': API_KEY,
+    },
+    tags: { endpoint: 'login', scenario: 'auth' },
+  });
+
+  loginDuration.add(resLogin.timings.duration);
+
+  const loginOk = check(resLogin, {
+    'Login: HTTP 200 o 201': (r) =>
+      r.status === 200 || r.status === 201,
+
+    'Login: devuelve accessToken': (r) => {
+      try {
+        return typeof r.json('accessToken') === 'string'
+          && r.json('accessToken').length > 0;
+      } catch (_) {
+        return false;
+      }
+    },
+
+    'Login: devuelve refreshToken': (r) => {
+      try {
+        return typeof r.json('refreshToken') === 'string'
+          && r.json('refreshToken').length > 0;
+      } catch (_) {
+        return false;
+      }
+    },
+  });
+
+  loginErrors.add(!loginOk);
 
   sleep(1);
 }

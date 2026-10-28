@@ -20,7 +20,7 @@ export const DataSourceConfig: DataSourceOptions = {
   password: configService.get<string>('DB_PASSWORD'),
   database: configService.get<string>('DB_DATABASE'),
   entities: [Cliente, Usuario, Sesion, Rol, Operacion],
-  synchronize: false,
+  synchronize: true,
 };
 
 export const AppDS = new DataSource(DataSourceConfig);

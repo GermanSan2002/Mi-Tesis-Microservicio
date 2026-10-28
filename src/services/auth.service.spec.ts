@@ -16,6 +16,7 @@ import { EstadosEntidades } from '../entities/estadosEntidades';
 import { TipoOperacion } from '../entities/tipo-operacion.enum';
 import { EstadosSesion } from '../entities/estadosSesiones.enum';
 import { Cliente } from '../entities/cliente.entity';
+import { createHash } from 'crypto';
 
 jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
@@ -213,6 +214,8 @@ describe('AuthService', () => {
       usuarioService.findUsuarioByEmailAndCliente.mockResolvedValue(mockUser);
       jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
       jest.spyOn(service, 'hashPassword').mockResolvedValue('hashed_refresh_token');
+      jest.spyOn(service, 'hashResfreshToken').mockResolvedValue('hashed_refresh_token' as never);
+
 
       sesionService.create.mockResolvedValue(mockSesion);
       tokenService.generateAccessToken.mockReturnValue('access_token_123');
@@ -303,11 +306,17 @@ describe('AuthService', () => {
       );
     })
     it('debe invalidar sesión y persistir auditoría con éxito', async () => {
+      const refreshToken = 'refresh_token_valido';
+
+      const refreshTokenHash = createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
+
       const payload = { sesionId: 'sesion-1', userId: 'user-1', clientId: 'client-1' };
       const mockSesion = {
         idSesion: 'sesion-1',
         estado: 'A',
-        refreshTokenHash: 'hash_guardado',
+        refreshTokenHash: refreshTokenHash,
       } as any;
 
       tokenService.verifyRefreshToken.mockResolvedValue(payload as any);

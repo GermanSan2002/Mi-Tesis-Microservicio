@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateRolDTO } from '../dto/rolDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
@@ -6,10 +6,14 @@ import { Rol } from '../entities/rol.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Cliente } from 'src/entities/cliente.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class RolService {
   constructor(
+    @Inject(CACHE_MANAGER) 
+    private cacheManager: Cache,
     @InjectRepository(Rol)
     private readonly rolRepository: Repository<Rol>,
     private readonly dataSource: DataSource,
@@ -23,8 +27,18 @@ export class RolService {
     idCliente: string,
     manager?: EntityManager,
   ): Promise<Rol[]> {
+    const cacheKey = `roles_cliente_${idCliente}`
+    
+    const cachedData = await this.cacheManager.get<Rol[]>(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     const repo = this.getRepository(manager);
-    return repo.find({ where: { cliente: { idCliente } } });
+    const roles = await repo.find({ where: { idCliente: idCliente } });
+    await this.cacheManager.set(cacheKey, roles, 300000);
+
+    return roles;
   }
 
   async findRolesByRolAndClienteId(
@@ -41,13 +55,15 @@ export class RolService {
     manager?: EntityManager,
   ): Promise<Rol[]> {
     const repo = this.getRepository(manager);
-    return repo.find({ where: { cliente: { idCliente } } });
+    return await repo.find({ where: { idCliente: idCliente } });
   }
 
   async createRol(
     rolData: CreateRolDTO,
     cliente: Cliente
   ): Promise<Rol> {
+    const cacheKey = `roles_cliente_${cliente.idCliente}`
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -64,6 +80,8 @@ export class RolService {
       
       await repo.save(newRol);
       await queryRunner.commitTransaction();
+    
+      this.cacheManager.del(cacheKey);
       
       return newRol;
     } catch (error) {

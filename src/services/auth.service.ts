@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
@@ -31,10 +32,14 @@ export class AuthService {
     private readonly operacionService: OperacionService,
     private readonly tokenService: TokenService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, saltRounds);
+  }
+
+  hashResfreshToken(resfresh: string): string {
+    return crypto.createHash('sha256').update(resfresh).digest('hex');
   }
 
   async comparePassword(
@@ -46,7 +51,7 @@ export class AuthService {
 
   async login(
     credentialsDTO: CredentialsDTO,
-    cliente: Cliente, 
+    cliente: Cliente,
     req: any
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const { email, password } = credentialsDTO;
@@ -72,9 +77,9 @@ export class AuthService {
     if (!isPasswordValid) {
       // Registrar la operación de inicio de sesión fallido
       const usuarioFallido = await this.usuarioService.registrarLoginFallido(user, req);
-      
-      if(usuarioFallido.estado === EstadosEntidades.BAJA){
-        throw new UnauthorizedException('Invalid email or password. User blocked, recover password');  
+
+      if (usuarioFallido.estado === EstadosEntidades.BAJA) {
+        throw new UnauthorizedException('Invalid email or password. User blocked, recover password');
       }
       throw new UnauthorizedException('Invalid email or password');
     }
@@ -108,7 +113,7 @@ export class AuthService {
           idCliente: user.idCliente,
           fechaRealizacion: new Date(),
           tipo: TipoOperacion.INICIAR_SESION,
-          metadatos: { 
+          metadatos: {
             sesionId: sesion.idSesion,
             ipAddress: ipAddress,
             userAgent: userAgent
@@ -128,7 +133,7 @@ export class AuthService {
       );
 
       // Guardar el hash del RefreshToken en la sesión
-      const refreshTokenHash = await this.hashPassword(refreshToken);
+      const refreshTokenHash = await this.hashResfreshToken(refreshToken);
       await this.sesionService.updateRefreshTokenHash(
         String(sesion.idSesion),
         refreshTokenHash,
@@ -176,11 +181,8 @@ export class AuthService {
       }
 
       // Verificar si el hash del RefreshToken coincide con el almacenado en la sesión
-      const isRefreshTokenValid = await this.comparePassword(
-        refreshToken,
-        sesion.refreshTokenHash,
-      );
-      if (!isRefreshTokenValid) {
+      const hashRefreshToken = this.hashResfreshToken(refreshToken);
+      if (hashRefreshToken !== sesion.refreshTokenHash) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
@@ -215,12 +217,12 @@ export class AuthService {
     }
   }
 
-  async solicitarRecuperarContraseña(recuperarDTO: RecuperarContraseñaSolicitudDTO, cliente: Cliente, req: any): Promise<string>{
+  async solicitarRecuperarContraseña(recuperarDTO: RecuperarContraseñaSolicitudDTO, cliente: Cliente, req: any): Promise<string> {
     //Obtener usuario con correo
     const usuarioRecuperar = await this.usuarioService.findUsuarioByEmailAndCliente(recuperarDTO.correo, cliente);
 
     //Verificar que el usuario existe
-    if(!usuarioRecuperar){
+    if (!usuarioRecuperar) {
       throw new NotFoundException("No existe un usuario con ese correo")
     }
 
@@ -232,12 +234,12 @@ export class AuthService {
     return token;
   }
 
-  async confirmarCambioContraseña(userId: string, cambiarContraña: CambiarContraseñaDTO, req: any): Promise<void>{
+  async confirmarCambioContraseña(userId: string, cambiarContraña: CambiarContraseñaDTO, req: any): Promise<void> {
     const user = await this.usuarioService.findUsuarioById(userId);
-    if(!user){
+    if (!user) {
       throw new NotFoundException("Usuario no encontrado");
     }
-    if(!user.verificado){
+    if (!user.verificado) {
       throw new ConflictException("Usuario no verificado")
     }
 
@@ -253,7 +255,7 @@ export class AuthService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    try{
+    try {
       //Registro la operacion de cambio de contraseña
       await this.operacionService.create(
         {
@@ -272,12 +274,12 @@ export class AuthService {
 
       await this.usuarioService.saveUsuario(user, queryRunner.manager);
       // Si todo el circuito se completó con éxito, confirmamo los cambios físicos en la BD
-      await queryRunner.commitTransaction();      
-    } catch(err) {
+      await queryRunner.commitTransaction();
+    } catch (err) {
       await queryRunner.rollbackTransaction();
 
-      throw err;      
-    } finally{
+      throw err;
+    } finally {
       await queryRunner.release();
     }
   }

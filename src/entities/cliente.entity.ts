@@ -3,8 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
-  ManyToMany,
-  JoinTable,
 } from 'typeorm';
 import { PlanesSuscripcion } from './planes-suscripcion.enum';
 import { Usuario } from './usuario.entity';

@@ -14,9 +14,28 @@ import { EstadosEntidades } from '../src/entities/estadosEntidades';
 import { RolService } from '../src/services/rol.service';
 import { Rol } from '../src/entities/rol.entity';
 import { Usuario } from '../src/entities/usuario.entity';
-import { ClienteModule } from 'src/modules/cliente.module';
 
 jest.setTimeout(15000);
+
+async function crearBaseDatosTest() {
+  const adminDataSource = new DataSource({
+    type: 'mysql',
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT),
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+  });
+
+  await adminDataSource.initialize();
+
+  try {
+    await adminDataSource.query(
+      'CREATE DATABASE IF NOT EXISTS `users-test`',
+    );
+  } finally {
+    await adminDataSource.destroy();
+  }
+}
 
 describe('Microservicio E2E Tests (Integration)', () => {
   let app: INestApplication<App>;
@@ -38,6 +57,8 @@ describe('Microservicio E2E Tests (Integration)', () => {
   let rolService: RolService;
 
   beforeAll(async () => {
+    await crearBaseDatosTest();
+    
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

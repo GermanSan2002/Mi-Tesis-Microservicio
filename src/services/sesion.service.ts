@@ -198,7 +198,7 @@ export class SesionService {
       throw new UnauthorizedException('Invalid session');
     }
 
-    if (sesion.estado !== 'A') {
+    if (sesion.estado !== EstadosSesion.ACTIVA) {
       throw new UnauthorizedException('Session is inactive');
     }
 

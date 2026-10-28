@@ -6,8 +6,8 @@ import { RolService } from './rol.service';
 import { Rol } from '../entities/rol.entity';
 import { CreateRolDTO } from '../dto/rolDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
-import { Cliente } from 'src/entities/cliente.entity';
-import { PlanesSuscripcion } from 'src/entities/planes-suscripcion.enum';
+import { Cliente } from '../entities/cliente.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 describe('RolService', () => {
     let service: RolService;
@@ -64,6 +64,15 @@ describe('RolService', () => {
                     provide: DataSource,
                     useValue: dataSource,
                 },
+                {
+                    provide: CACHE_MANAGER,
+                    useValue: {
+                        get: jest.fn(),
+                        set: jest.fn(),
+                        del: jest.fn(),
+                        reset: jest.fn(),
+                    },
+                },
             ],
         }).compile();
 
@@ -84,8 +93,8 @@ describe('RolService', () => {
 
             const result = await service.findRolesByClienteId(idCliente);
 
-            expect(rolRepository.find).toHaveBeenCalledWith({
-                where: { cliente: { idCliente } },
+            expect(rolRepository.find).toHaveBeenCalledWith({ 
+                where: { idCliente: idCliente } 
             });
             expect(result).toEqual([mockRol]);
         });
@@ -113,7 +122,7 @@ describe('RolService', () => {
             const result = await service.getRolesByClienteId(idCliente);
 
             expect(rolRepository.find).toHaveBeenCalledWith({
-                where: { cliente: { idCliente } },
+                where: { idCliente: idCliente },
             });
             expect(result).toEqual([mockRol]);
         });
@@ -153,7 +162,7 @@ describe('RolService', () => {
 
         it('debe hacer rollback y lanzar el error si ocurre una falla durante la creación', async () => {
             const dbError = new Error('Error de base de datos');
-            
+
             (queryRunner.manager!.save as jest.Mock).mockRejectedValue(dbError as never);
             (queryRunner.manager!.getRepository as jest.Mock).mockReturnValue({
                 create: jest.fn().mockReturnValue({}),

@@ -8,13 +8,11 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
 @ApiTags('roles')
 @Controller('roles')
-@UseInterceptors(CacheInterceptor)
 export class RolController {
     constructor(private readonly rolService: RolService) {}
 
     @Get('get-roles')
     @UseGuards(ApiKeyGuard)
-    @CacheTTL(300000)
     @ApiSecurity('X-API-KEY')
     @ApiHeader({
         name: 'X-API-Key',
@@ -23,7 +21,7 @@ export class RolController {
     })
     async getRoles(@Req() req: any, @Res() res: Response) {
         const idCliente = req.idCliente;
-        const roles = await this.rolService.getRolesByClienteId(idCliente);
+        const roles = await this.rolService.findRolesByClienteId(idCliente);
         return res.status(200).json(roles);
     }
 
