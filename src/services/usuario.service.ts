@@ -192,14 +192,6 @@ export class UsuarioService {
       existingUser.parametros = updateUsuario.parametros;
     }
 
-    if (updateUsuario.tipo !== undefined) {
-      existingUser.tipo = updateUsuario.tipo;
-    }
-
-    if (updateUsuario.verificado !== undefined) {
-      existingUser.verificado = updateUsuario.verificado;
-    }
-
     // Obtener datos para la operacion de actualización de usuario
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Unknown';

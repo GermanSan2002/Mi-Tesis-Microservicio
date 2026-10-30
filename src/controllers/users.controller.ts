@@ -131,6 +131,10 @@ export class UsersController {
     status: 400,
     description: 'Los roles enviados no pertenecen al cliente.',
   })
+  @ApiResponse({
+    status: 401,
+    description: 'API KEY invalida para la solicitud',
+  })
   async registerUserCliente(
     @Req() req: any,
     @Body() usuarioDTO: CreateUsuarioDTO,
@@ -138,7 +142,15 @@ export class UsersController {
   ) {
     const cliente = req.cliente;
 
-    const respuesta = await this.usuarioService.registerUserCliente(usuarioDTO, cliente, req);
+    const usuario = await this.usuarioService.registerUserCliente(usuarioDTO, cliente, req);
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
+    
     return res.status(201).json(respuesta);
   }
 
@@ -167,16 +179,16 @@ export class UsersController {
     description: 'Usuario verificado exitosamente.',
   })
   @ApiResponse({
-    status: 400,
-    description: 'El usuario no pertenece al cliente especificado.',
-  })
-  @ApiResponse({
     status: 404,
     description: 'Cliente o Usuario no encontrado.',
   })
   @ApiResponse({
     status: 409,
     description: 'El usuario ya se encuentra verificado.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Api Key Invalida',
   })
   async verifyUserCliente(
     @Req() req: any,
@@ -185,7 +197,8 @@ export class UsersController {
   ) {
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.verifyUserCliente(idCliente, idUsuario, req);
+    await this.usuarioService.verifyUserCliente(idCliente, idUsuario, req);
+    
     return res.status(200).json({message: "Usuario verificado"});
   }
 
@@ -237,7 +250,15 @@ export class UsersController {
   ) {
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.asignarRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+    const usuario = await this.usuarioService.asignarRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
+
     return res.status(200).json(respuesta);
   }
 
@@ -289,7 +310,15 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.removerRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+    const usuario = await this.usuarioService.removerRolesUsuario(idUsuario, idCliente, rolesDTO.roles, req);
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
+
     return res.status(200).json(respuesta);
   }
 
@@ -329,6 +358,7 @@ export class UsersController {
     const idCliente = req.idCliente;
 
     const respuesta = await this.usuarioService.getUsuariosClientes(idCliente, query);
+    
     return res.status(200).json(respuesta);
   }
 
@@ -373,7 +403,15 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo, req);
+    const usuario = await this.usuarioService.darBajaUsuario(idUsuario, idCliente, bajaDTO.motivo, req);
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
+
     return res.status(200).json(respuesta);
   }
 
@@ -418,7 +456,15 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const respuesta = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, req, altaDTO.motivo);
+    const usuario = await this.usuarioService.darAltaUsuario(idUsuario, idCliente, req, altaDTO.motivo);
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
+
     return res.status(200).json(respuesta);
   }
 
@@ -442,9 +488,21 @@ export class UsersController {
   ){
     const idCliente = req.idCliente;
 
-    const user = await this.usuarioService.findUsuarioClientById(idUsuario, idCliente);
+    const usuario = await this.usuarioService.findUsuarioClientById(idUsuario, idCliente);
 
-    return res.status(200).json(user);
+    if(!usuario){
+      return res.status(404).json("No existe el usuario buscado");  
+    }
+
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
+
+    return res.status(200).json(respuesta);
   }
 
   @Patch('/update/:idUsuario')
@@ -472,7 +530,15 @@ export class UsersController {
   ){
     const cliente = req.cliente;
 
-    const respuesta = await this.usuarioService.updateUsuario(idUsuario, cliente, updateUsuario, req);
+    const usuario = await this.usuarioService.updateUsuario(idUsuario, cliente, updateUsuario, req);
+
+    const {
+      contraseña,
+      recuperacionTokenHash,
+      intentosFallidosLogin,
+      tipo,
+      ...respuesta
+    } = usuario;
 
     return res.status(200).json(respuesta);
   }

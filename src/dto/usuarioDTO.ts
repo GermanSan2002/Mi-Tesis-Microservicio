@@ -85,23 +85,6 @@ export class ModifyUsuarioDTO {
   @IsOptional()
   @IsObject()
   parametros?: any;
-
-  @ApiPropertyOptional({
-    enum: TipoUsuario,
-    example: TipoUsuario.ADMINISTRADOR_CLIENTE,
-    description: 'Tipo de usuario',
-  })
-  @IsOptional()
-  @IsEnum(TipoUsuario)
-  tipo: TipoUsuario;
-
-  @ApiPropertyOptional({
-    example: false,
-    description: 'Indica si el usuario verificó su cuenta',
-  })
-  @IsOptional()
-  @IsBoolean()
-  verificado?: boolean;
 }
 
 export class ModifyUsuarioPerfilDTO{
