@@ -28,6 +28,7 @@ import { ClienteController } from './controllers/cliente.controller';
 import { ScheduleModule } from '@nestjs/schedule';
 import { redisStore } from 'cache-manager-redis-yet';
 import { CacheModule } from '@nestjs/cache-manager';
+import { ParametroModule } from './modules/parametro.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { CacheModule } from '@nestjs/cache-manager';
     UsuarioModule,
     ClienteModule,
     RolModule,
+    ParametroModule
   ],
   controllers: [
     AppController,

@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
-  BadRequestException,
   ConflictException,
-  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -16,8 +14,8 @@ import { OperacionService } from './operacion.service';
 import { ClienteService } from './cliente.service';
 import { Usuario } from '../entities/usuario.entity';
 import { Cliente } from '../entities/cliente.entity';
-import { EstadosEntidades } from '../entities/estadosEntidades';
 import { TipoOperacion } from '../entities/tipo-operacion.enum';
+import { ParametroService } from './parametro.service';
 
 jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
@@ -78,6 +76,10 @@ describe('UsuarioService', () => {
       findClienteById: jest.fn(),
     } as unknown as jest.Mocked<ClienteService>;
 
+    const parametroService = {
+      verifyParametros: jest.fn(),
+    } as unknown as jest.Mocked<ParametroService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsuarioService,
@@ -88,6 +90,7 @@ describe('UsuarioService', () => {
         { provide: RolService, useValue: rolService },
         { provide: OperacionService, useValue: operacionService },
         { provide: ClienteService, useValue: clienteService },
+        { provide: ParametroService, useValue: parametroService },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();

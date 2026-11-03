@@ -21,6 +21,7 @@ import { TipoOperacion } from '../entities/tipo-operacion.enum';
 import { EstadosEntidades } from '../entities/estadosEntidades';
 import { Cliente } from '../entities/cliente.entity';
 import { PaginatedUsuarioQuery } from '../controllers/users.controller';
+import { ParametroService } from './parametro.service';
 
 dotenv.config();
 
@@ -43,7 +44,7 @@ export class UsuarioService {
     private readonly usuarioRepository: Repository<Usuario>,
     private readonly rolService: RolService,
     private readonly operacionService: OperacionService,
-    private readonly clienteService: ClienteService,
+    private readonly parametroService: ParametroService,
     private readonly dataSource: DataSource,
   ) { }
 
@@ -189,6 +190,7 @@ export class UsuarioService {
     }
 
     if (updateUsuario.parametros !== undefined) {
+      await this.parametroService.verifyParametros(updateUsuario.parametros, cliente.idCliente);
       existingUser.parametros = updateUsuario.parametros;
     }
 
@@ -294,6 +296,9 @@ export class UsuarioService {
     if (existingUser) {
       throw new ConflictException('Email already registered');
     }
+
+    //verificar parametros
+    await this.parametroService.verifyParametros(usuarioDTO.parametros, cliente.idCliente);
 
     // Obtener y validar los roles del cliente
     let roles: Rol[] = [];

@@ -74,7 +74,7 @@ jobs:
 
             # 4. Reconstruir y desplegar el clúster escalado a 2 réplicas (Aprovechando los 2 núcleos ARM)
             sudo docker compose down
-            sudo docker compose up -d --build --scale app=2
+            sudo docker compose up -d --build --scale app=3 mysql-api redis app nginx
 
             # 5. Limpieza de imágenes e instancias en desuso para optimizar almacenamiento en la VM
             sudo docker system prune -f

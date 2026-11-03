@@ -14,6 +14,8 @@ import { EstadosEntidades } from '../src/entities/estadosEntidades';
 import { RolService } from '../src/services/rol.service';
 import { Rol } from '../src/entities/rol.entity';
 import { Usuario } from '../src/entities/usuario.entity';
+import { TipoParametro } from 'src/entities/tipo-parametro.enum';
+import { Parametro } from 'src/entities/parametro.entity';
 
 jest.setTimeout(15000);
 
@@ -51,6 +53,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
   let usuarioPrueba: Usuario;
   let usuarioPruebaPass: string;
   let usuarioAdmin: Usuario;
+  let parametroPrueba: Parametro;
 
   let usuarioService: UsuarioService;
   let clienteService: ClienteService;
@@ -428,6 +431,213 @@ describe('Microservicio E2E Tests (Integration)', () => {
     });
   });
 
+  describe('ParametroModule', () => {
+    describe('Flujo de creacion de parametro', () => {
+      describe('/parameters/crear', () => {
+        it('Debe crear un parametro correctamente', async () => {
+          const parametroDto = {
+            nombre: "telefono",
+            tipo: TipoParametro.STRING,
+            descripcion: "Numero telefonico del usuario"
+          };
+
+          const response = await request(app.getHttpServer())
+            .post('/parameters/crear')
+            .set('Content-Type', 'application/json')
+            .set('X-API-Key', testApiKey)
+            .send(parametroDto)
+            .expect(HttpStatus.CREATED);
+          
+          expect(response.body).toBeDefined();
+          expect(response.body).toHaveProperty('nombre', parametroDto.nombre);
+
+          parametroPrueba = response.body as Parametro;
+        })
+
+        it('Debe crear un arrojar 409 CONFLICT si existe un parametro con ese nombre', async () => {
+          const parametroDto = {
+            nombre: "telefono",
+            tipo: TipoParametro.STRING,
+            
+            descripcion: "Numero telefonico del usuario"
+          };
+
+          const response = await request(app.getHttpServer())
+            .post('/parameters/crear')
+            .set('Content-Type', 'application/json')
+            .set('X-API-Key', testApiKey)
+            .send(parametroDto)
+            .expect(HttpStatus.CONFLICT);
+        })
+
+        it('Debe arrojar 400 BAD_REQUEST para un formato de parametro invalido', async () => {
+          const parametroDto = {
+            nombre: "DNI",
+            tipo: "strong",
+            descripcion: "Numero telefonico del usuario"
+          };
+
+          await request(app.getHttpServer())
+            .post('/parameters/crear')
+            .set('Content-Type', 'application/json')
+            .set('X-API-Key', testApiKey)
+            .send(parametroDto)
+            .expect(HttpStatus.BAD_REQUEST);
+        })
+
+        it('Debe arrojar 401 UNAUTHORIZED para api key invalida', async () => {
+          const parametroDto = {
+            nombre: "DNI",
+            tipo: "strong",
+            descripcion: "Numero telefonico del usuario"
+          };
+
+          await request(app.getHttpServer())
+            .post('/parameters/crear')
+            .set('Content-Type', 'application/json')
+            .set('X-API-Key', "testApiKey")
+            .send(parametroDto)
+            .expect(HttpStatus.UNAUTHORIZED);
+        })
+      })
+    })
+
+    describe('Flujo de alta y baja de parametros', () => {
+      describe('/parameters/baja/:idParametro', () => {
+        it('Debe dar de baja un parametro', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+
+          const response = await request(app.getHttpServer())
+            .patch(`/parameters/baja/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.OK);
+
+          expect(response.body).toBeDefined();
+          expect(response.body.idParametro).toBe(idPrueba);
+          expect(response.body.estado).toBe(EstadosEntidades.BAJA);
+        });
+
+        it('Debe arrojar 404 NOT_FOUND si el parametro no existe', async () => {
+          const idPrueba = "parametro_inexistente";
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/baja/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.NOT_FOUND);
+        });
+
+        it('Debe arrojar 400 BAD_REQUEST si el parametro ya esta dado de baja', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/baja/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.BAD_REQUEST);
+        });
+
+        it('Debe arrojar 401 UNAUTHORIZED para api key invalida', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/baja/${idPrueba}`)
+            .set('X-API-Key', "testApiKey")
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+      })
+
+      describe('/parameters/alta/:idParametro', () => {
+        it('Debe dar de alta un parametro', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+
+          const response = await request(app.getHttpServer())
+            .patch(`/parameters/alta/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.OK);
+
+          expect(response.body).toBeDefined();
+          expect(response.body.idParametro).toBe(idPrueba);
+          expect(response.body.estado).toBe(EstadosEntidades.ALTA);
+        });
+
+        it('Debe arrojar 404 NOT_FOUND si el parametro no existe', async () => {
+          const idPrueba = "parametro_inexistente";
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/alta/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.NOT_FOUND);
+        });
+
+        it('Debe arrojar 400 BAD_REQUEST si el parametro ya esta dado de baja', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/alta/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.BAD_REQUEST);
+        });
+
+        it('Debe arrojar 401 UNAUTHORIZED para api key invalida', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/alta/${idPrueba}`)
+            .set('X-API-Key', "testApiKey")
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+      })
+    })
+
+    describe('Flujo de modificacion de parametros', () => {
+      describe('/parameters/update/:idParametro', () => {
+        it('Debe modificar un parametro', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+          const parametroDto = {
+            descripcion: "Numero telefonico del usuario modificado"
+          };
+
+          const response = await request(app.getHttpServer())
+            .patch(`/parameters/update/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .send(parametroDto)
+            .expect(HttpStatus.OK);
+          
+          expect(response.body).toBeDefined();
+          expect(response.body.idParametro).toBe(idPrueba);
+          expect(response.body.descripcion).toBe(parametroDto.descripcion);
+
+          parametroPrueba = response.body as Parametro;
+        });
+
+        it('Debe arrojar 404 NOT_FOUND si el parametro no existe', async () => {
+          const idPrueba = "parametro_inexistente";
+          const parametroDto = {
+            descripcion: "Numero telefonico del usuario modificado"
+          };
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/update/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .send(parametroDto)
+            .expect(HttpStatus.NOT_FOUND);
+        });
+
+        it('Debe arrojar 401 UNAUTHORIZED para api key invalida', async () => {
+          const idPrueba = parametroPrueba.idParametro;
+          const parametroDto = {
+            descripcion: "Numero telefonico del usuario modificado"
+          };
+
+          await request(app.getHttpServer())
+            .patch(`/parameters/update/${idPrueba}`)
+            .set('X-API-Key', "testApiKey")
+            .send(parametroDto)
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+      });
+    });
+  })
+
   describe('UserModule', () => {
     describe('Flujo de registro de usuario para cliente', () => {
       describe('/users/registrar-usuario (POST)', () => {
@@ -435,11 +645,6 @@ describe('Microservicio E2E Tests (Integration)', () => {
           const usuarioDTO = {
             contraseña: 'Password123!',
             correo: 'usuario@empresatest.com',
-            parametros: {
-              telefono: '1122334455',
-              nombre: 'Usuario',
-              apellido: 'Prueba'
-            },
             roles: [rolesPrueba[0].idRol, rolesPrueba[1].idRol]
           };
 
@@ -452,9 +657,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
 
           expect(response.body).toBeDefined();
           expect(response.body).toHaveProperty('correo', usuarioDTO.correo);
-          expect(response.body).toHaveProperty('parametros');
-          expect(response.body.parametros).toEqual(usuarioDTO.parametros);
-
+          
           expect(response.body.contraseña).not.toBe(usuarioDTO.contraseña);
 
           //guardo usuario para pruebas futuras
@@ -466,11 +669,6 @@ describe('Microservicio E2E Tests (Integration)', () => {
           const usuarioDTO = {
             contraseña: 'Password123!',
             correo: 'usuario@empresatest.com',
-            parametros: {
-              telefono: '1122334455',
-              nombre: 'Usuario',
-              apellido: 'Prueba'
-            }
           };
 
           await request(app.getHttpServer())
@@ -485,11 +683,6 @@ describe('Microservicio E2E Tests (Integration)', () => {
           const usuarioDTO = {
             contraseña: 'Password123!',
             correo: 'usuario2@empresatest.com',
-            parametros: {
-              telefono: '1122334455',
-              nombre: 'Usuario',
-              apellido: 'Prueba'
-            },
             roles: [rolesPrueba[0].idRol, "rol inexistente"]
           };
 
@@ -505,11 +698,6 @@ describe('Microservicio E2E Tests (Integration)', () => {
           const usuarioDTO = {
             contraseña: 'Password123!',
             correo: 'usuario2@empresatest.com',
-            parametros: {
-              telefono: '1122334455',
-              nombre: 'Usuario',
-              apellido: 'Prueba'
-            },
             roles: [rolesPrueba[0].idRol]
           };
 
@@ -519,7 +707,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
             .set('X-API-Key', "api key invalida")
             .send(usuarioDTO)
             .expect(HttpStatus.UNAUTHORIZED);
-        })
+        });
       });
     });
 
@@ -951,27 +1139,28 @@ describe('Microservicio E2E Tests (Integration)', () => {
         });
       });
     });
-
+    
     describe('Flujo de modificacion de usuario', () => {
       describe('/users/update/:idUsuario (PATCH)', () => {
         it('Debe actualizar parcialmente los parámetros del usuario', async () => {
           const idPrueba = usuarioPrueba.idUsuario;
 
           const parametrosActualizados = {
-            tema: 'oscuro',
-            idioma: 'es',
-          };
+            telefono: "+543876851452"
+          }
 
           const response = await request(app.getHttpServer())
             .patch(`/users/update/${idPrueba}`)
             .set('X-API-Key', testApiKey)
-            .send({ parametros: parametrosActualizados })
+            .send({ 
+              parametros: parametrosActualizados
+            })
             .expect(HttpStatus.OK);
 
           expect(response.body).toEqual(
             expect.objectContaining({
               idUsuario: usuarioPrueba.idUsuario,
-              parametros: parametrosActualizados,
+              parametros: parametrosActualizados
             }),
           );
 
@@ -1004,6 +1193,39 @@ describe('Microservicio E2E Tests (Integration)', () => {
           expect(response.body.correo).toBe(nuevoCorreo);
 
           usuarioPrueba = response.body;
+        });
+
+        it('Debe rechazar parametros no definidos por el cliente', async () => {
+          const idPrueba = usuarioPrueba.idUsuario;
+
+          const parametrosActualizados = {
+            telefono: "+543876851452",
+            parametroInvalido: "valor"
+          }
+
+          await request(app.getHttpServer())
+            .patch(`/users/update/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .send({ 
+              parametros: parametrosActualizados
+            })
+            .expect(HttpStatus.BAD_REQUEST);
+        });
+
+        it('Debe rechazar parametros con formato incorrecto', async () => {
+          const idPrueba = usuarioPrueba.idUsuario;
+
+          const parametrosActualizados = {
+            telefono: 3876851452,
+          }
+
+          await request(app.getHttpServer())
+            .patch(`/users/update/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .send({ 
+              parametros: parametrosActualizados
+            })
+            .expect(HttpStatus.BAD_REQUEST);
         });
 
         it('debe rechazar un correo que ya pertenece a otro usuario del cliente', async () => {

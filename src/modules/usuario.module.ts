@@ -7,6 +7,7 @@ import { Rol } from '../entities/rol.entity';
 import { RolModule } from './rol.module';
 import { UsersController } from '../controllers/users.controller';
 import { OperacionModule } from './operacion.module';
+import { ParametroModule } from './parametro.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { OperacionModule } from './operacion.module';
     ClienteModule,
     RolModule,
     OperacionModule,
+    ParametroModule
   ],
   providers: [UsuarioService],
   controllers: [UsersController],

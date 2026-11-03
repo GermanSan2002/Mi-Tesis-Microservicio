@@ -5,6 +5,7 @@ import { Rol } from '../entities/rol.entity';
 import { Sesion } from '../entities/sesion.entity';
 import { Usuario } from '../entities/usuario.entity';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { Parametro } from 'src/entities/parametro.entity';
 
 ConfigModule.forRoot({
   envFilePath: ['.env'],
@@ -19,7 +20,7 @@ export const DataSourceConfig: DataSourceOptions = {
   username: configService.get<string>('DB_USERNAME'),
   password: configService.get<string>('DB_PASSWORD'),
   database: configService.get<string>('DB_DATABASE'),
-  entities: [Cliente, Usuario, Sesion, Rol, Operacion],
+  entities: [Cliente, Usuario, Sesion, Rol, Operacion, Parametro],
   synchronize: false,
 };
 

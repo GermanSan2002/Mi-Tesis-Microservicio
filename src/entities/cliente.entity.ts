@@ -9,6 +9,7 @@ import { Usuario } from './usuario.entity';
 import { Rol } from './rol.entity';
 import { EstadosEntidades } from './estadosEntidades';
 import { Operacion } from './operacion.entity';
+import { Parametro } from './parametro.entity';
 
 @Entity('clientes')
 export class Cliente {
@@ -32,6 +33,9 @@ export class Cliente {
 
   @OneToMany(() => Usuario, (usuario) => usuario.cliente)
   usuarios: Usuario[];
+
+  @OneToMany(() => Parametro, (parametro) => parametro.cliente)
+  parametros: Parametro[];
 
   @OneToMany(() => Operacion, (operacion) => operacion.cliente)
   operaciones: Operacion[];
