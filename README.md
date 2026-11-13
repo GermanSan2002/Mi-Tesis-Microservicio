@@ -558,6 +558,75 @@ Controlador encargado de la administración de identidades, asignación/remoció
 * **400 Bad Request:** Datos enviados inválidos.
 * **404 Not Found:** Usuario no encontrado.
 
+## Módulo de Gestión de Parámetros
+
+Controlador encargado de permitir que cada empresa defina y administre parámetros de restricción operativa que posteriormente podrán ser utilizados para regular el comportamiento de sus propios clientes dentro de las aplicaciones que integren la API.
+
+### 1. Obtener Parámetros de un cliente
+
+- **Método y Ruta:** `GET /parameters`
+- **Descripción:** Busca y retorna los parámetros asociados al cliente identificado mediante la API Key proporcionada.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta proporcionada al cliente.
+- **Respuestas Esperadas:**
+  - **200 OK:** Parámetros encontrados. Si no existen parámetros asociados, devuelve una lista vacía.
+  - **401 Unauthorized:** API Key inválida.
+
+### 2. Crear Parámetro para un cliente
+
+- **Método y Ruta:** `POST /parameters/crear`
+- **Descripción:** Crea un nuevo parámetro asociado al cliente identificado mediante la API Key. Los datos del parámetro se reciben en el cuerpo de la solicitud.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta proporcionada al cliente.
+- **Cuerpo de la Solicitud (`Body`):**
+  - `CreateParametroDto`: Objeto que contiene los datos necesarios para crear el parámetro.
+- **Respuestas Esperadas:**
+  - **201 Created:** Parámetro creado correctamente.
+  - **401 Unauthorized:** API Key inválida.
+
+### 3. Dar de alta un parámetro
+
+- **Método y Ruta:** `PATCH /parameters/alta/:idParametro`
+- **Descripción:** Cambia el estado del parámetro identificado para darlo de alta.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta proporcionada al cliente.
+- **Parámetros de Ruta (`Path Parameters`):**
+  - `idParametro`: Identificador del parámetro que se desea dar de alta. Ejemplo: `User_01`.
+- **Respuestas Esperadas:**
+  - **200 OK:** Parámetro dado de alta correctamente.
+  - **401 Unauthorized:** API Key inválida.
+
+### 4. Dar de baja un parámetro
+
+- **Método y Ruta:** `PATCH /parameters/baja/:idParametro`
+- **Descripción:** Cambia el estado del parámetro identificado para darlo de baja.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta proporcionada al cliente.
+- **Parámetros de Ruta (`Path Parameters`):**
+  - `idParametro`: Identificador del parámetro que se desea dar de baja. Ejemplo: `User_01`.
+- **Respuestas Esperadas:**
+  - **200 OK:** Parámetro dado de baja correctamente.
+  - **401 Unauthorized:** API Key inválida.
+
+### 5. Actualizar un parámetro
+
+- **Método y Ruta:** `PATCH /parameters/update/:idParametro`
+- **Descripción:** Actualiza la información del parámetro identificado. Los nuevos datos se reciben en el cuerpo de la solicitud.
+- **Acceso / Autenticación:** M2M (`ApiKeyGuard`).
+- **Cabeceras Requeridas (`Headers`):**
+  - `X-API-Key`: Clave secreta proporcionada al cliente.
+- **Parámetros de Ruta (`Path Parameters`):**
+  - `idParametro`: Identificador del parámetro que se desea actualizar. Ejemplo: `User_01`.
+- **Cuerpo de la Solicitud (`Body`):**
+  - `UpdateParametroDto`: Objeto que contiene los datos que se desean actualizar.
+- **Respuestas Esperadas:**
+  - **200 OK:** Parámetro actualizado correctamente.
+  - **401 Unauthorized:** API Key inválida.
+
 ## Módulo de Gestión de Roles
 
 Controlador encargado de la definición, consulta y administración de la matriz de roles y permisos corporativos (*RBAC - Role Based Access Control*), garantizando el almacenamiento aislado por cada organización cliente (*Multi-tenant Isolation*). Incluye optimización de lectura mediante almacenamiento en memoria caché.
@@ -1114,15 +1183,28 @@ git clone [https://github.com/GermanSan2002/Mi-Tesis-Microservicio.git](https://
 ```
 ### Documentación
 
-#### GitHub Actions
-El proyecto está configurado con GitHub Actions para implementar CI/CD, automatizando el proceso de pruebas, compilación, y despliegue. Los flujos de trabajo se encuentran en el directorio `.github/workflows/` y están diseñados para:
+#### Integración y despliegue continuo (CI/CD)
 
-- Ejecutar pruebas unitarias con cada push al repositorio.
-- Construir y publicar imágenes Docker en un registro (como GCR o ECR).
-- Desplegar automáticamente el microservicio en un clúster de Kubernetes.
+El proyecto contempla la incorporación de un flujo de integración y despliegue continuo (CI/CD), con el objetivo de automatizar tareas de validación y facilitar la publicación del microservicio.
 
-#### Swagger
-Para facilitar la exploración y prueba de la API, se ha integrado Swagger en el proyecto. Swagger genera automáticamente la documentación interactiva de la API, permitiendo a los desarrolladores probar los endpoints directamente desde el navegador. Puedes acceder a la documentación de Swagger en `/api/docs` una vez que el servidor esté en ejecución.
+Este flujo permite integrar las pruebas automatizadas en el proceso de desarrollo, contribuyendo a mantener la calidad y estabilidad de la aplicación. Entre las tareas contempladas se encuentran:
+
+- Ejecutar pruebas unitarias y de integración para verificar el correcto funcionamiento de los componentes del microservicio.
+- Validar los cambios incorporados al código fuente antes de su despliegue.
+- Automatizar el proceso de construcción y preparación de la aplicación para su publicación.
+- Facilitar el despliegue del microservicio en un entorno de nube.
+
+La automatización de estos procesos forma parte de las mejoras incorporadas respecto del proyecto original, alineando el desarrollo con prácticas actuales de integración continua y entrega continua.
+
+#### Swagger / OpenAPI
+
+Para facilitar la exploración, comprensión e integración de la API REST, el proyecto incorpora documentación basada en el estándar OpenAPI mediante Swagger.
+
+Esta herramienta permite generar una interfaz interactiva a partir de la definición de los endpoints de la aplicación, proporcionando información sobre las operaciones disponibles, sus parámetros, los datos de entrada y las posibles respuestas.
+
+La documentación facilita que los desarrolladores puedan consultar y probar los endpoints directamente desde el navegador, sin necesidad de implementar una interfaz gráfica propia.
+
+De esta manera, Swagger constituye una herramienta central dentro del enfoque API-first del proyecto, permitiendo documentar y explorar los servicios expuestos por el microservicio.
 
 ### Contribución
 

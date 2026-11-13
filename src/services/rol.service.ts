@@ -1,11 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateRolDTO } from '../dto/rolDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
 import { Rol } from '../entities/rol.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { DataSource } from 'typeorm';
-import { Cliente } from 'src/entities/cliente.entity';
+import { Cliente } from '../entities/cliente.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
@@ -90,5 +90,31 @@ export class RolService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async altaRol(
+    id: string,
+    idCliente: string
+  ): Promise<Rol> {
+    const repo = this.getRepository();
+    const rol = await repo.findOne({ where: { idRol: id, idCliente: idCliente } });
+    if (!rol) {
+      throw new NotFoundException('Rol no encontrado');
+    }
+    rol.estado = EstadosEntidades.ALTA;
+    return await repo.save(rol);
+  }
+
+  async bajaRol(
+    id: string,
+    idCliente: string
+  ): Promise<Rol> {
+    const repo = this.getRepository();
+    const rol = await repo.findOne({ where: { idRol: id, idCliente: idCliente } });
+    if (!rol) {
+      throw new NotFoundException('Rol no encontrado');
+    }
+    rol.estado = EstadosEntidades.BAJA;
+    return await repo.save(rol);
   }
 }

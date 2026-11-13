@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  Patch,
   Post,
   Res,
   SetMetadata,
@@ -15,7 +17,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CreateClienteDto } from '../dto/clienteDTO';
+import { CreateClienteDto, UpdateClienteDto } from '../dto/clienteDTO';
 import { TipoUsuario } from '../entities/tipo-usuario.enum';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { TipoUsuarioGuard } from '../guard/tipoUsuario.guard';
@@ -80,5 +82,37 @@ export class ClienteController {
     const respuesta = await this.clienteService.findAll();
 
     return res.status(200).json(respuesta);
+  }
+
+  @Patch('update/:id')
+  @ApiOperation({
+    summary: 'Actualizar datos de un cliente',
+    description:
+      'Permite a un superadministrador actualizar los datos de un cliente registrado',
+  })
+  @UseGuards(JwtAuthGuard, TipoUsuarioGuard)
+  @SetMetadata('tipo', [TipoUsuario.SUPER_ADMINISTRADOR])
+  @ApiBearerAuth()
+  @ApiBody({ type: UpdateClienteDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Cliente actualizado con éxito. Devuelve los datos actualizados de la entidad.',
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'No autorizado. El token de acceso es inválido, expiró o no fue provisto en la cabecera.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Cliente no encontrado. El ID proporcionado no corresponde a ningún cliente registrado.',
+  })
+  async updateCliente(
+    @Res() res: Response,
+    @Body() dto: UpdateClienteDto,
+    @Param('id') id: string
+  ) {
+    const cliente = await this.clienteService.updateCliente(id, dto);
+    return res.status(200).json(cliente);
   }
 }

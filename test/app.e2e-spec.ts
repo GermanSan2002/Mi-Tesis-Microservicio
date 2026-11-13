@@ -16,6 +16,7 @@ import { Rol } from '../src/entities/rol.entity';
 import { Usuario } from '../src/entities/usuario.entity';
 import { TipoParametro } from 'src/entities/tipo-parametro.enum';
 import { Parametro } from 'src/entities/parametro.entity';
+import { Cliente } from 'src/entities/cliente.entity';
 
 jest.setTimeout(15000);
 
@@ -53,6 +54,7 @@ describe('Microservicio E2E Tests (Integration)', () => {
   let usuarioPrueba: Usuario;
   let usuarioPruebaPass: string;
   let usuarioAdmin: Usuario;
+  let clientePrueba: Cliente;
   let parametroPrueba: Parametro;
 
   let usuarioService: UsuarioService;
@@ -427,6 +429,70 @@ describe('Microservicio E2E Tests (Integration)', () => {
             .set('X-API-Key', "api key invalida")
             .expect(HttpStatus.UNAUTHORIZED);
         })
+      });
+    });
+
+    describe('Flujo de alta y baja de roles para un cliente', () => {
+      describe('/roles/baja/:id (PATCH)', () => {
+        it('Debe dar de baja un rol para el cliente', async () => {
+          const idPrueba = rolesPrueba[0].idRol;
+
+          const response = await request(app.getHttpServer())
+            .patch(`/roles/baja/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.OK);
+          
+          expect(response.body).toBeDefined();
+          expect(response.body.idRol).toBe(idPrueba);
+          expect(response.body.estado).toBe(EstadosEntidades.BAJA);
+        });
+        it('Debe arrojar 404 NOT_FOUND si el rol no existe', async () => {
+          const idPrueba = "rol_inexistente";
+
+          await request(app.getHttpServer())
+            .patch(`/roles/baja/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.NOT_FOUND);
+        });
+        it('Debe arrojar 401 UNAUTHORIZED para api key invalida', async () => {
+          const idPrueba = rolesPrueba[0].idRol;
+
+          await request(app.getHttpServer())
+            .patch(`/roles/baja/${idPrueba}`)
+            .set('X-API-Key', "api key invalida")
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
+      });
+
+      describe('/roles/alta/:id (PATCH)', () => {
+        it('Debe dar de alta un rol para el cliente', async () => {
+          const idPrueba = rolesPrueba[0].idRol;
+
+          const response = await request(app.getHttpServer())
+            .patch(`/roles/alta/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.OK);
+
+          expect(response.body).toBeDefined();
+          expect(response.body.idRol).toBe(idPrueba);
+          expect(response.body.estado).toBe(EstadosEntidades.ALTA);
+        });
+        it('Debe arrojar 404 NOT_FOUND si el rol no existe', async () => {
+          const idPrueba = "rol_inexistente";
+
+          await request(app.getHttpServer())
+            .patch(`/roles/alta/${idPrueba}`)
+            .set('X-API-Key', testApiKey)
+            .expect(HttpStatus.NOT_FOUND);
+        });
+        it('Debe arrojar 401 UNAUTHORIZED para api key invalida', async () => {
+          const idPrueba = rolesPrueba[0].idRol;
+
+          await request(app.getHttpServer())
+            .patch(`/roles/alta/${idPrueba}`)
+            .set('X-API-Key', "api key invalida")
+            .expect(HttpStatus.UNAUTHORIZED);
+        });
       });
     });
   });
@@ -1316,6 +1382,8 @@ describe('Microservicio E2E Tests (Integration)', () => {
           // La clave original no debe aparecer como propiedad de la entidad.
           expect(response.body.cliente.apiKey).toBeUndefined();
           expect(response.body.cliente.apiKeyHash).toBeUndefined();
+
+          clientePrueba = response.body.cliente as Cliente;
         });
 
         it('Debe rechazar la petición si no se proporciona JWT', async () => {
@@ -1411,6 +1479,63 @@ describe('Microservicio E2E Tests (Integration)', () => {
             .set('Authorization', `Bearer ${loginResponse.body.accessToken}`)
             .expect(HttpStatus.FORBIDDEN);
         });
+      })
+    })
+
+    describe('Flujo de actualización de clientes', () => {
+      describe('/client/update/:idCliente (PATCH)', () => {
+        it('debe actualizar los datos del cliente', async () => {
+          const idCliente = clientePrueba.idCliente;
+
+          const clienteDTO = {
+            nombre: 'Empresa E2E Actualizada',
+            mailContacto: 'contacto@actualizada.com',
+            plan: PlanesSuscripcion.ORO,
+          };
+
+          const response = await request(app.getHttpServer())
+            .patch(`/client/update/${idCliente}`)
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send(clienteDTO)
+            .expect(HttpStatus.OK);
+          
+          expect(response.body).toBeDefined();
+          expect(response.body.idCliente).toBe(idCliente);
+          expect(response.body.nombre).toBe(clienteDTO.nombre);
+          expect(response.body.mailContacto).toBe(clienteDTO.mailContacto);
+          expect(response.body.plan).toBe(clienteDTO.plan);
+
+          clientePrueba = response.body as Cliente;
+        })
+        it('debe rechazar la solicitud si no se proporciona un token', async () => {
+          const idCliente = clientePrueba.idCliente;
+
+          const clienteDTO = {
+            nombre: 'Empresa E2E Actualizada',
+            mailContacto: 'contacto@actualizada.com',
+            plan: PlanesSuscripcion.ORO,
+          };
+
+          await request(app.getHttpServer())
+            .patch(`/client/update/${idCliente}`)
+            .send(clienteDTO)
+            .expect(HttpStatus.UNAUTHORIZED);
+        })
+        it('debe rechazar un token inválido', async () => {
+          const idCliente = clientePrueba.idCliente;
+          
+          const clienteDTO = {
+            nombre: 'Empresa E2E Actualizada',
+            mailContacto: 'contacto@actualizada.com',
+            plan: PlanesSuscripcion.ORO,
+          };
+
+          await request(app.getHttpServer())
+            .patch(`/client/update/${idCliente}`)
+            .set('Authorization', 'Bearer token-invalido')
+            .send(clienteDTO)
+            .expect(HttpStatus.UNAUTHORIZED);
+        })
       })
     })
   });

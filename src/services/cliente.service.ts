@@ -1,9 +1,9 @@
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cliente } from '../entities/cliente.entity';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { CreateClienteDto } from '../dto/clienteDTO';
+import { CreateClienteDto, UpdateClienteDto } from '../dto/clienteDTO';
 import { EstadosEntidades } from '../entities/estadosEntidades';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
@@ -96,12 +96,47 @@ export class ClienteService {
       select: ['idCliente', 'nombre', 'estado'],
     });
 
-    if (!cliente || cliente.estado !== 'A') {
+    if (!cliente || cliente.estado !== EstadosEntidades.ALTA) {
       return null;
     }
 
     await this.cacheManager.set(cacheKey, cliente, 300000);
 
     return cliente;
+  }
+
+  async altaCliente(idCliente: string): Promise<Cliente> {
+    const cliente = await this.clienteRepository.findOne({ where: { idCliente } });
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+    if (cliente.estado !== EstadosEntidades.ALTA) {
+      throw new BadRequestException('El cliente ya está dado de alta');
+    }
+    cliente.estado = EstadosEntidades.ALTA;
+    
+    return await this.clienteRepository.save(cliente);
+  }
+
+  async bajaCliente(idCliente: string): Promise<Cliente> {
+    const cliente = await this.clienteRepository.findOne({ where: { idCliente } });
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+    if (cliente.estado !== EstadosEntidades.BAJA) {
+      throw new BadRequestException('El cliente no está dado de baja');
+    }
+    cliente.estado = EstadosEntidades.BAJA;
+    
+    return await this.clienteRepository.save(cliente);
+  }
+
+  async updateCliente(idCliente: string, dto: UpdateClienteDto): Promise<Cliente> {
+    const cliente = await this.clienteRepository.findOne({ where: { idCliente } });
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+    Object.assign(cliente,  dto);
+    return await this.clienteRepository.save(cliente);
   }
 }
